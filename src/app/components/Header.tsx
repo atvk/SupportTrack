@@ -221,7 +221,7 @@ export default function Header() {
               </button>
               <SignOutIcon
                 onClick={handleLogout}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-whitedark:bg-gray-900 cursor-pointer"
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900 cursor-pointer"
               />
             </div>
           ) : (

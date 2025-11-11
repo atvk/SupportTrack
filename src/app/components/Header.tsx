@@ -12,6 +12,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
 } from "@phosphor-icons/react";
+import Logo from "@/app/components/Logo";
 import { ROUTES } from "@/utils/routes";
 import Link from "next/link";
 import Image from "next/image";
@@ -169,36 +170,40 @@ export default function Header() {
   return (
     <>
       <header
-        className="w-full p-4 flex justify-between items-center bg-white text-gray-800 border-b border-b-gray-800 
-        dark:border-b-white dark:bg-gray-900 shadow-lg transition-colors"
+        className="min-w-[360px] max-w-[1440px] mx-auto w-full p-2 flex justify-between items-center bg-white text-gray-800 border-b border-b-gray-800 
+        dark:border-b-white dark:bg-gray-800 transition-colors"
       >
-        <div className="p-4 flex gap-5 justify-between items-center">
-          <Link href={ROUTES.HOME}>
-            <HeadsetIcon className="cursor-pointer w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900" />
-          </Link>
-
-          <div className="text-gray-800 text-2xl font-bold dark:text-white dark:bg-gray-900">
+        <div className="p-2 flex gap-2 justify-between items-center">
+          <Logo />
+          <h1
+            className="text-gray-800 text-[clamp(12px,calc(8px+1.111vw),24px)]
+           dark:text-white dark:bg-gray-800"
+          >
             SupportTrack
-          </div>
+          </h1>
         </div>
 
-        <div className="p-4 flex gap-5 justify-between items-center">
+        <div className="p-2 flex gap-2 justify-between items-center">
           {theme === "light" ? (
             <SunIcon
               onClick={toggleTheme}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900 cursor-pointer"
+              className="text-gray-800 bg-white dark:text-white  
+                  dark:bg-gray-800 cursor-pointer
+              w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12"
             />
           ) : (
             <MoonIcon
               onClick={toggleTheme}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900 cursor-pointer"
+              className="text-gray-800 bg-white dark:text-white  
+                  dark:bg-gray-800 cursor-pointer
+              w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12"
             />
           )}
           {currentUser ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleProfileClick}
-                className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center p-2 gap-2 "
               >
                 {currentUser.avatar ? (
                   <Image
@@ -206,28 +211,37 @@ export default function Header() {
                     height={24}
                     src={currentUser.avatar}
                     alt={currentUser.firstName}
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                    className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                     rounded-full object-cover"
                   />
                 ) : (
                   <UserCircleIcon
                     size={24}
-                    className="w-8 h-8 sm:w-10 sm:h-10 text-gray-600 dark:text-gray-400"
+                    className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                     text-gray-600 dark:text-gray-400"
                   />
                 )}
-                <div className="grid justify-items-start text-gray-800 dark:text-white">
-                  <span> {currentUser.login}</span>
-                  <span>{currentUser.role}</span>
+                <div
+                  className="grid justify-items-start text-[clamp(12px,calc(8px+1.111vw),24px)] text-gray-800 dark:text-white
+                   opacity-0 scale-95 max-[760px]:hidden 
+                   sm:opacity-100 
+                   sm:scale-100 transition-all duration-300 
+                  "
+                >
+                  {currentUser.login}
                 </div>
               </button>
               <SignOutIcon
                 onClick={handleLogout}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900 cursor-pointer"
+                className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
               />
             </div>
           ) : (
             <SignInIcon
               onClick={openSignInPopup}
-              className="w-8 h-8 sm:w-10 sm:h-10 bg-white text-gray-800 dark:text-white dark:bg-gray-900 cursor-pointer"
+              className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
             />
           )}
         </div>

@@ -4,13 +4,13 @@
 
 /* Базовые стили для светлой темы по умолчанию */
 :root {
-  --background: 255, 255, 255;
-  --foreground: rgb(31 41 55);
+  --background: rgb(255, 255, 255);
+  --foreground: rgb(255, 255, 255);
 }
 
 .dark {
-  --background: rgb(31 41 55);
-  --foreground: 255, 255, 255;
+  --background: rgb(255, 255, 255);
+  --foreground: rgb(255, 255, 255);
 }
 
 html,

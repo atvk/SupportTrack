@@ -1,7 +1,8 @@
 [
   {
     "id": "1760372225609",
-    "role": "director",
+    "department": "Центр поддержки клиентов",
+    "role": "Руководитель",
     "login": "steblovskiyanton@yandex.ru",
     "password": "04",
     "createdAt": "2025-10-13T16:17:05.609Z",
@@ -11,7 +12,8 @@
   },
   {
     "id": "user_1760459482769",
-    "role": "admin",
+    "department": "Центр поддержки клиентов",
+    "role": "Админ",
     "login": "nat@yandex.ru",
     "password": "1234",
     "firstName": "Наталья",
@@ -21,7 +23,8 @@
   },
   {
     "id": "user_1760459636005",
-    "role": "admin",
+    "department": "Центр поддержки клиентов",
+    "role": "Админ",
     "login": "steblovskiyanton@gmail.com",
     "password": "123456",
     "firstName": "Антон",
@@ -31,7 +34,8 @@
   },
   {
     "id": "user_1760460908181",
-    "role": "employee",
+    "department": "Центр поддержки клиентов",
+    "role": "Сотрудник",
     "login": "s@yandex.ru",
     "password": "123456",
     "firstName": "Иван",
@@ -41,7 +45,8 @@
   },
   {
     "id": "user_1760461160641",
-    "role": "specialist",
+    "department": "Центр поддержки клиентов",
+    "role": "Специалист",
     "login": "semen@yandex.ru",
     "password": "123456",
     "firstName": "Семен",

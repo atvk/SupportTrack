@@ -180,7 +180,7 @@ export default function UserTable({ users, loading, onUsersUpdate, onMessage }: 
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <div className="w-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Заголовок и фильтры */}
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -234,11 +234,13 @@ export default function UserTable({ users, loading, onUsersUpdate, onMessage }: 
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow-sm 
+        border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full min-w-full">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium 
+                text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Фото
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">

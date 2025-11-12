@@ -13,18 +13,11 @@ import { UserData } from "@/types/users";
 // Регистрируем необходимые компоненты Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-interface User {
-  id: string;
-  role: string;
-  login:string;
-  password:string;
-  createdAt:string;
-  firstName:string;
-  lastName:string;
-  avatar: string;
+interface DirectorProps {
+  user: UserData;
 }
 
-export default function DirectorPage() {
+export default function Director({ user }: DirectorProps) {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setUsersLoading] = useState(true);
   const [message, setMessage] = useState("");

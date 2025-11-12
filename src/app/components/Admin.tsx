@@ -5,8 +5,11 @@ import UserTable from "@/app/components/UserTable";
 import AddUserPopup from "@/app/components/AddUserPopup";
 import { UserData } from "@/types/users";
 
-export default function DirectorPage() {
-  
+interface AdminProps {
+  user: UserData;
+}
+
+export default function Admin({ user }: AdminProps) {
   const [users, setUsers] = useState<UserData[]>([]);
   const [message, setMessage] = useState("");
   const [usersLoading, setUsersLoading] = useState(false);
@@ -40,9 +43,12 @@ export default function DirectorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div
+      className="mt-2 min-w-[360px] max-w-[1440px] mx-auto w-full rounded-xl
+    items-center bg-white text-gray-800 dark:bg-gray-600 transition-colors"
+    >
       {/* Шапка */}
-      <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="w-full px-2 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div>
@@ -52,15 +58,14 @@ export default function DirectorPage() {
             </div>
           </div>
 
-          <PlusIcon size={32} onClick={() => setIsPopupOpen(true)}/>
-
-          
+          <PlusIcon
+            size={32}
+            onClick={() => setIsPopupOpen(true)}
+            className="cursor-pointer text-gray-800 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          />
         </div>
       </div>
-
-      {/* Основной контент */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Сообщения */}
+      <main className="w-full px-2 py-2">
         {message && (
           <div
             className={`p-4 rounded-lg mb-6 ${
@@ -73,7 +78,6 @@ export default function DirectorPage() {
           </div>
         )}
 
-        {/* Таблица пользователей */}
         <UserTable
           users={users}
           loading={usersLoading}
@@ -81,8 +85,6 @@ export default function DirectorPage() {
           onMessage={setMessage}
         />
       </main>
-
-      {/* Попап добавления пользователя */}
       <AddUserPopup
         isOpen={isPopupOpen}
         onClose={() => setIsPopupOpen(false)}
@@ -92,3 +94,7 @@ export default function DirectorPage() {
     </div>
   );
 }
+
+/*    
+      
+       */

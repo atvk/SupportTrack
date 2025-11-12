@@ -1,45 +1,29 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  HeadsetIcon,
   SunIcon,
   MoonIcon,
-  MagnifyingGlassIcon,
   SignInIcon,
   SignOutIcon,
   UserCircleIcon,
-  XIcon,
-  EyeIcon,
-  EyeSlashIcon,
 } from "@phosphor-icons/react";
 import Logo from "@/app/components/Logo";
-import { ROUTES } from "@/utils/routes";
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import SignInPopup from "./SignInPopup";
 
 type Theme = "light" | "dark";
 
 export default function Header() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light";
-    }
-    return "light";
-  });
-
+  const [theme, setTheme] = useState<Theme>("light");
   const [isSignInPopupOpen, setIsSignInPopupOpen] = useState(false);
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const router = useRouter();
-  const popupRef = useRef<HTMLDivElement>(null);
 
   const toggleTheme = () => {
     const newTheme: Theme = theme === "light" ? "dark" : "light";
@@ -48,52 +32,29 @@ export default function Header() {
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
-  // Обработчик нажатия Escape
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isSignInPopupOpen) {
-        closeSignInPopup();
-      }
-    };
-
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isSignInPopupOpen]);
-
-  // Обработчик клика вне попапа
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        closeSignInPopup();
-      }
-    };
-
-    if (isSignInPopupOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isSignInPopupOpen]);
-
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as Theme;
-    if (savedTheme && savedTheme !== theme) {
+    if (savedTheme) {
       setTheme(savedTheme);
       document.documentElement.classList.toggle("dark", savedTheme === "dark");
     }
-  }, [theme]);
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
       const userData = localStorage.getItem("currentUser");
       if (userData) {
-        setCurrentUser(JSON.parse(userData));
+        const user = JSON.parse(userData);
+        setCurrentUser(user);
+        redirectToUserPage(user.id);
       }
     };
     checkAuth();
   }, []);
+
+  const redirectToUserPage = (userId: string) => {
+    router.push(`/users/${userId}`);
+  };
 
   const openSignInPopup = () => {
     setIsSignInPopupOpen(true);
@@ -127,23 +88,8 @@ export default function Header() {
         localStorage.setItem("currentUser", JSON.stringify(user));
         closeSignInPopup();
 
-        // Перенаправляем в зависимости от роли
-        switch (user.role) {
-          case "director":
-            router.push("/director");
-            break;
-          case "specialist":
-            router.push("/specialist");
-            break;
-          case "employee":
-            router.push("/employee");
-            break;
-          case "admin":
-            router.push("/admin");
-            break;
-          default:
-            router.push("/");
-        }
+        // Перенаправляем на личную страницу пользователя
+        redirectToUserPage(user.id);
       } else {
         const errorData = await response.json();
         setError(errorData.message || "Ошибка входа");
@@ -163,7 +109,7 @@ export default function Header() {
 
   const handleProfileClick = () => {
     if (currentUser) {
-      router.push(`/users/${currentUser.id}`);
+      redirectToUserPage(currentUser.id);
     }
   };
 
@@ -246,101 +192,18 @@ export default function Header() {
           )}
         </div>
       </header>
-      {isSignInPopupOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div
-            ref={popupRef}
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-md w-full p-6"
-          >
-            {/* Заголовок и кнопка закрытия */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Вход в систему
-              </h2>
-              <button
-                onClick={closeSignInPopup}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <XIcon size={20} className="text-gray-500 dark:text-gray-400" />
-              </button>
-            </div>
-            <form onSubmit={handleSignInSubmit} className="space-y-6">
-              {/* Поле логина */}
-              <div>
-                <label
-                  htmlFor="login"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Электронная почта
-                </label>
-                <input
-                  type="email"
-                  id="login"
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                  placeholder="your@email.com"
-                />
-              </div>
 
-              {/* Поле пароля */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Пароль
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 pr-12"
-                    placeholder="Введите пароль"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    {showPassword ? (
-                      <EyeSlashIcon size={20} />
-                    ) : (
-                      <EyeIcon size={20} />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Сообщение об ошибке */}
-              {error && (
-                <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              {/* Кнопка входа */}
-              <button
-                type="submit"
-                disabled={!login || !password || isLoading}
-                className={`
-                  w-full py-3 px-4 rounded-lg focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition font-medium shadow-md
-                  ${
-                    login && password && !isLoading
-                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                      : "bg-gray-400 text-gray-200 cursor-not-allowed"
-                  }
-                `}
-              >
-                {isLoading ? "Вход..." : "Войти в систему"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      <SignInPopup
+        isOpen={isSignInPopupOpen}
+        onClose={closeSignInPopup}
+        login={login}
+        setLogin={setLogin}
+        password={password}
+        setPassword={setPassword}
+        isLoading={isLoading}
+        error={error}
+        onSubmit={handleSignInSubmit}
+      />
     </>
   );
 }

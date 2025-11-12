@@ -1,5 +1,6 @@
 export interface UserData {
   id: string;
+  department:string;
   role: string;
   login: string;
   password: string;
@@ -11,6 +12,7 @@ export interface UserData {
 
 export interface NewUserData {
   role: string;
+  department:string;
   login: string;
   password: string;
   firstName: string;

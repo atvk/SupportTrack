@@ -15,6 +15,9 @@
 
 html,
 body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
   max-width: 100vw;
   overflow-x: hidden;
   background-color: rgb(var(--background));
@@ -53,4 +56,8 @@ a {
   color: inherit;
   text-decoration: none;
   cursor: pointer;
+}
+
+#__next {
+  width: 100%;
 }

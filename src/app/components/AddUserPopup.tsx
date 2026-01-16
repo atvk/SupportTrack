@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import AddUserForm from "./AddUserForm";
+
 
 interface AddUserPopupProps {
   isOpen: boolean;
@@ -59,12 +59,6 @@ export default function AddUserPopup({ isOpen, onClose, onUserAdded, onMessage }
               <span className="text-2xl text-gray-500 dark:text-gray-400">×</span>
             </button>
           </div>
-          
-          <AddUserForm
-            onUserAdded={onUserAdded}
-            onMessage={onMessage}
-            onCancel={onClose}
-          />
         </div>
       </div>
     </div>

@@ -78,12 +78,7 @@ export default function Admin({ user }: AdminProps) {
           </div>
         )}
 
-        <UserTable
-          users={users}
-          loading={usersLoading}
-          onUsersUpdate={loadUsers}
-          onMessage={setMessage}
-        />
+        <UserTable/>
       </main>
       <AddUserPopup
         isOpen={isPopupOpen}

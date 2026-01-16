@@ -1,13 +1,5 @@
 "use client";
-import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import {
-  UserCircleIcon,
-  ArrowLeftIcon,
-  UserIcon,
-  BriefcaseIcon,
-  UsersThreeIcon,
-} from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import type { UserData } from "@/types/users";
 import Admin from "@/app/components/Admin";
@@ -49,7 +41,7 @@ export default function UserPage() {
       case "Админ":
         return <Admin user={user} />;
       case "Руководитель":
-        return <Director user={user} />;
+        return <Director/>;
       case "Сотрудник":
         return <Employee user={user} />;
       case "Специалист":

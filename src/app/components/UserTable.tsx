@@ -55,7 +55,6 @@ interface FilterPopupProps {
 }
 
 const FilterPopup: React.FC<FilterPopupProps> = ({
-  columnKey,
   columnLabel,
   values,
   selectedValues,
@@ -215,7 +214,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   );
 };
 
-export default function InspectionTable() {
+export default function UserTable() {
   const [applications, setApplications] = useState<Application[]>([
     { id: 48, direction: "ЦОД", reportRequested: false, reportRequestDate: null, invoiceDate: "2024-01-15", inn: "6623029538", organizationName: "WDLUK Corporation", kfVvPaid: "1 500 000 ₽", kfOdoPaid: "4 500 000 ₽", chvPaid: "10 000 ₽", vstPaid: "5 000 ₽", objectType: "Производство", responsible: "Иванов И.И.", status: "В работе", documentType: "Договор", remarksCount: 3, hasRemarks: true },
     { id: 52, direction: "ССП", reportRequested: true, reportRequestDate: "2024-01-10", invoiceDate: "2024-01-12", inn: "6685151055", organizationName: "Tech Solutions LLC", kfVvPaid: "50 000 ₽", kfOdoPaid: "0 ₽", chvPaid: "5 000 ₽", vstPaid: "5 000 ₽", objectType: "IT-Услуги", responsible: "Петров П.П.", status: "Завершено", documentType: "Счет", remarksCount: 0, hasRemarks: false },

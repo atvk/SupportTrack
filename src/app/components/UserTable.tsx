@@ -1036,56 +1036,56 @@ export default function UserTable() {
         </table>
       </div>
 
-      {/* Пагинация */}
-      <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="text-xs sm:text-sm text-gray-700">
-          Показано <span className="font-medium">{startIndex + 1}</span> -{" "}
-          <span className="font-medium">
-            {Math.min(startIndex + itemsPerPage, filteredApplications.length)}
-          </span>{" "}
-          из <span className="font-medium">{filteredApplications.length}</span> заявок
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className={`px-2 py-1.5 rounded-lg border text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-          >
-            <ArrowLeftIcon size={14} />
-          </button>
-          
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (page <= 3) {
-              pageNum = i + 1;
-            } else if (page >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = page - 2 + i;
-            }
-            
-            return (
-              <button
-                key={pageNum}
-                onClick={() => setPage(pageNum)}
-                className={`px-3 py-1.5 rounded-lg border text-sm ${page === pageNum ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-          
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className={`px-2 py-1.5 rounded-lg border text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-          >
-            <ArrowRightIcon size={14} />
-          </button>
-        </div>
-      </div>
+    {/* Пагинация */}
+<div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+  <div className="text-xs sm:text-sm text-gray-700">
+    Показано <span className="font-medium">{startIndex + 1}</span> -{" "}
+    <span className="font-medium">
+      {Math.min(startIndex + itemsPerPage, filteredApplications.length)}
+    </span>{" "}
+    из <span className="font-medium">{filteredApplications.length}</span> заявок
+  </div>
+  <div className="flex items-center gap-1">
+    <button
+      onClick={() => setPage(p => Math.max(1, p - 1))}
+      disabled={page === 1}
+      className={`px-2 py-1.5 rounded-lg border text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+    >
+      <ArrowLeftIcon size={14} />
+    </button>
+    
+    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+      let pageNum: number; // Явно указываем тип number
+      if (totalPages <= 5) {
+        pageNum = i + 1;
+      } else if (page <= 3) {
+        pageNum = i + 1;
+      } else if (page >= totalPages - 2) {
+        pageNum = totalPages - 4 + i;
+      } else {
+        pageNum = page - 2 + i;
+      }
+      
+      return (
+        <button
+          key={pageNum}
+          onClick={() => setPage(pageNum)}
+          className={`px-3 py-1.5 rounded-lg border text-sm ${page === pageNum ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+        >
+          {pageNum}
+        </button>
+      );
+    })}
+    
+    <button
+      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+      disabled={page === totalPages}
+      className={`px-2 py-1.5 rounded-lg border text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+    >
+      <ArrowRightIcon size={14} />
+    </button>
+  </div>
+</div>
     </div>
   );
 }

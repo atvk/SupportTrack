@@ -6,6 +6,11 @@ import {
   SignInIcon,
   SignOutIcon,
   UserCircleIcon,
+  UserSwitchIcon,
+  ClipboardTextIcon,
+  UserPlusIcon,
+  PencilIcon,
+  TableIcon 
 } from "@phosphor-icons/react";
 import Logo from "@/app/components/Logo";
 import Image from "next/image";
@@ -13,9 +18,11 @@ import { useRouter } from "next/navigation";
 import SignInPopup from "./SignInPopup";
 
 type Theme = "light" | "dark";
+type ActiveTab = "plan" | "entry" | "changes";
 
 export default function Header() {
   const [theme, setTheme] = useState<Theme>("light");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("entry");
   const [isSignInPopupOpen, setIsSignInPopupOpen] = useState(false);
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -113,43 +120,111 @@ export default function Header() {
     }
   };
 
+  const handleTabClick = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    switch (tab) {
+      case "plan":
+        router.push("/inspection");
+        break;
+      case "entry":
+        router.push("/entry");
+        break;
+      case "changes":
+        router.push("/changes");
+        break;
+    }
+  };
+
   return (
     <>
       <header
-        className="min-w-[360px] max-w-[1440px] mx-auto w-full p-2 flex justify-between items-center bg-white text-gray-800 border-b border-b-gray-800 
-        dark:border-b-white dark:bg-gray-800 transition-colors"
+        className="min-w-[360px] max-w-[1440px] w-full px-4 sm:px-5 p-2 mx-auto
+        flex justify-between items-center 
+        bg-white text-gray-800 border-b border-b-gray-800 
+        dark:border-b-white dark:bg-gray-800 dark:text-white transition-colors"
       >
+        {/* Левая часть: Логотип */}
         <div className="p-2 flex gap-2 justify-between items-center">
-          <Logo />
-          <h1
-            className="text-gray-800 text-[clamp(12px,calc(8px+1.111vw),24px)]
-           dark:text-white dark:bg-gray-800"
-          >
-            SupportTrack
-          </h1>
+          <TableIcon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
+                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer" />
         </div>
 
+        {/* Центральная часть: Навигация с кнопками - показывается только для авторизованных пользователей */}
+        {currentUser && (
+          <nav className="flex items-center gap-1 sm:gap-2">
+            {/* Кнопка "Плановая проверка" */}
+            <button
+              onClick={() => handleTabClick("plan")}
+              className={`
+                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
+                ${activeTab === "plan" 
+                  ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700" 
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+                }
+              `}
+            >
+              <ClipboardTextIcon 
+                size={20} 
+                weight={activeTab === "plan" ? "fill" : "regular"}
+                className={activeTab === "plan" ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}
+              />
+              <span className="font-medium whitespace-nowrap hidden lg:inline">
+                Плановая проверка
+              </span>
+            </button>
+
+            {/* Кнопка "Вступление" - активная по умолчанию */}
+            <button
+              onClick={() => handleTabClick("entry")}
+              className={`
+                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
+                ${activeTab === "entry" 
+                  ? "bg-gray-600 text-white border border-blue-700 shadow-sm" 
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+                }
+              `}
+            >
+              <UserPlusIcon 
+                size={20} 
+                weight={activeTab === "entry" ? "fill" : "regular"}
+                className={activeTab === "entry" ? "text-white" : "text-gray-500 dark:text-gray-400"}
+              />
+              <span className="font-medium whitespace-nowrap hidden lg:inline">
+                Вступление
+              </span>
+            </button>
+
+            {/* Кнопка "Изменения" */}
+            <button
+              onClick={() => handleTabClick("changes")}
+              className={`
+                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
+                ${activeTab === "changes" 
+                  ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700" 
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
+                }
+              `}
+            >
+              <PencilIcon 
+                size={20} 
+                weight={activeTab === "changes" ? "fill" : "regular"}
+                className={activeTab === "changes" ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}
+              />
+              <span className="font-medium whitespace-nowrap hidden lg:inline">
+                Изменения
+              </span>
+            </button>
+          </nav>
+        )}
+
+        {/* Правая часть: Переключение темы и управление пользователем */}
         <div className="p-2 flex gap-2 justify-between items-center">
-          {theme === "light" ? (
-            <SunIcon
-              onClick={toggleTheme}
-              className="text-gray-800 bg-white dark:text-white  
-                  dark:bg-gray-800 cursor-pointer
-              w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12"
-            />
-          ) : (
-            <MoonIcon
-              onClick={toggleTheme}
-              className="text-gray-800 bg-white dark:text-white  
-                  dark:bg-gray-800 cursor-pointer
-              w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12"
-            />
-          )}
+          
           {currentUser ? (
             <div className="flex items-center gap-2">
               <button
                 onClick={handleProfileClick}
-                className="flex items-center p-2 gap-2 "
+                className="flex items-center p-2 gap-2"
               >
                 {currentUser.avatar ? (
                   <Image
@@ -157,36 +232,43 @@ export default function Header() {
                     height={24}
                     src={currentUser.avatar}
                     alt={currentUser.firstName}
-                    className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
                      rounded-full object-cover"
                   />
                 ) : (
                   <UserCircleIcon
                     size={24}
-                    className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
                      text-gray-600 dark:text-gray-400"
                   />
                 )}
                 <div
-                  className="grid justify-items-start text-[clamp(12px,calc(8px+1.111vw),24px)] text-gray-800 dark:text-white
-                   opacity-0 scale-95 max-[760px]:hidden 
-                   sm:opacity-100 
-                   sm:scale-100 transition-all duration-300 
+                  className="grid justify-items-start text-[clamp(10px,calc(10px+1.111vw),16px)] text-gray-800 dark:text-white
+                   opacity-0 scale-95 max-[1024px]:hidden 
+                   lg:opacity-100 
+                   lg:scale-100 transition-all duration-300 
                   "
                 >
-                  {currentUser.login}
+                  <span>{currentUser.login}</span>
+                  <span>{currentUser.role}</span>
                 </div>
               </button>
+              <UserSwitchIcon
+                onClick={openSignInPopup}
+                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
+                 bg-white text-gray-800 dark:text-white
+                  dark:bg-gray-800 cursor-pointer"
+              />
               <SignOutIcon
                 onClick={handleLogout}
-                className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
                  bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
               />
             </div>
           ) : (
             <SignInIcon
               onClick={openSignInPopup}
-              className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12
+              className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
                  bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
             />
           )}

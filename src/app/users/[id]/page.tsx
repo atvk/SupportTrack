@@ -93,34 +93,7 @@ export default function UserPage() {
       className="min-w-[360px] max-w-[1440px] mx-auto w-full p-2
     justify-between items-center bg-white text-gray-800 dark:bg-gray-800 dark:text-white transition-colors"
     >
-      <div className="flex items-center gap-6 ">
-        <div className="flex-shrink-0">
-          {user.avatar ? (
-            <Image
-              width={96}
-              height={96}
-              src={user.avatar}
-              alt={`${user.firstName} ${user.lastName}`}
-              className="w-24 h-24 rounded-full object-cover border-2 border-gray-800"
-            />
-          ) : (
-            <UserCircleIcon
-              size={96}
-              className="w-24 h-24 text-gray-800 dark:text-gray-800"
-            />
-          )}
-        </div>
-        <div className="text-left">
-          <div className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-            {user.firstName} {user.lastName}
-          </div>
-          <div className="text-sm text-gray-600 dark:text-gray-400 capitalize mb-1">
-            {user.role}
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center"><Role /></div>
-      
+    <Role />
     </main>
   );
 }

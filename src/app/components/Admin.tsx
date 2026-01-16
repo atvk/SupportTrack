@@ -53,7 +53,7 @@ export default function Admin({ user }: AdminProps) {
           <div className="flex items-center space-x-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Страница администратора
+                Добавить пользователя
               </h1>
             </div>
           </div>

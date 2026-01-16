@@ -59,7 +59,12 @@ export default function Director({ user }: AdminProps) {
           </div>
         )}
 
-        <UserTable/>
+        <UserTable
+          users={users}
+          loading={usersLoading}
+          onUsersUpdate={loadUsers}
+          onMessage={setMessage}
+        />
       </main>
       <AddUserPopup
         isOpen={isPopupOpen}

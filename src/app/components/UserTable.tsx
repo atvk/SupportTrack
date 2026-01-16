@@ -1,3 +1,4 @@
+"use client";
 import { useState, useRef, useEffect } from "react";
 import {
   PencilIcon,
@@ -52,6 +53,7 @@ interface FilterPopupProps {
   selectedValues: string[];
   onApply: (selected: string[]) => void;
   onClose: () => void;
+  triggerRect: DOMRect | null;
 }
 
 const FilterPopup: React.FC<FilterPopupProps> = ({
@@ -59,11 +61,45 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   values,
   selectedValues,
   onApply,
-  onClose
+  onClose,
+  triggerRect
 }) => {
   const [search, setSearch] = useState("");
   const [localSelected, setLocalSelected] = useState<string[]>(selectedValues);
   const popupRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  // Рассчитываем позицию попапа
+  useEffect(() => {
+    if (triggerRect && popupRef.current) {
+      const popupWidth = 288; // w-72 = 288px
+      const popupHeight = popupRef.current.offsetHeight;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      // Вычисляем позицию для центрирования по горизонтали относительно кнопки
+      let left = triggerRect.left + (triggerRect.width / 2) - (popupWidth / 2);
+      
+      // Проверяем, чтобы попап не выходил за границы экрана
+      if (left < 10) left = 10;
+      if (left + popupWidth > viewportWidth - 10) {
+        left = viewportWidth - popupWidth - 10;
+      }
+      
+      // Позиция по вертикали - под кнопкой с небольшим отступом
+      let top = triggerRect.bottom + 5;
+      
+      // Если не хватает места снизу, показываем сверху
+      if (top + popupHeight > viewportHeight - 10) {
+        top = triggerRect.top - popupHeight - 5;
+      }
+      
+      // Ограничиваем минимальную позицию сверху
+      if (top < 10) top = 10;
+      
+      setPosition({ top, left });
+    }
+  }, [triggerRect]);
 
   // Закрытие попапа при клике вне его
   useEffect(() => {
@@ -75,6 +111,18 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [onClose]);
+
+  // Закрытие по Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose]);
 
   // Фильтрация значений по поиску
@@ -115,8 +163,12 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
   return (
     <div
       ref={popupRef}
-      className="absolute z-50 mt-1 w-72 bg-white rounded-lg shadow-xl border border-gray-300"
-      style={{ left: '50%', transform: 'translateX(-50%)' }}
+      className="fixed z-[100] w-72 bg-white rounded-lg shadow-xl border border-gray-300"
+      style={{
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+        maxHeight: 'calc(100vh - 40px)'
+      }}
     >
       {/* Заголовок попапа */}
       <div className="p-3 border-b border-gray-200">
@@ -124,7 +176,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
           <h3 className="font-medium text-gray-800">Фильтр: {columnLabel}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 p-1"
           >
             <XIcon size={16} />
           </button>
@@ -143,6 +195,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            autoFocus
           />
           <MagnifyingGlassIcon
             size={16}
@@ -168,7 +221,7 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       </div>
 
       {/* Список значений с чекбоксами */}
-      <div className="max-h-60 overflow-y-auto">
+      <div className="overflow-y-auto" style={{ maxHeight: '200px' }}>
         {filteredValues.length === 0 ? (
           <div className="p-4 text-center text-gray-500 text-sm">
             Не найдено
@@ -199,13 +252,13 @@ const FilterPopup: React.FC<FilterPopupProps> = ({
       <div className="p-3 border-t border-gray-200 flex gap-2">
         <button
           onClick={handleReset}
-          className="flex-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+          className="flex-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
         >
           Сбросить
         </button>
         <button
           onClick={handleApply}
-          className="flex-1 px-3 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="flex-1 px-3 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
         >
           Применить
         </button>
@@ -243,6 +296,7 @@ export default function UserTable() {
     columnKey: string;
     columnLabel: string;
     values: string[];
+    triggerRect: DOMRect | null;
   } | null>(null);
   
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -319,16 +373,40 @@ export default function UserTable() {
   }, [showKeyboardHelp]);
 
   // Открытие попапа фильтра
-  const openFilterPopup = (columnKey: string, columnLabel: string) => {
+  const openFilterPopup = (columnKey: string, columnLabel: string, event: React.MouseEvent) => {
     // Собираем уникальные значения для столбца
     let values: string[] = [];
     
     switch (columnKey) {
+      case 'id':
+        values = Array.from(new Set(applications.map(app => app.id.toString())));
+        break;
       case 'direction':
         values = Array.from(new Set(applications.map(app => app.direction)));
         break;
-      case 'status':
-        values = Array.from(new Set(applications.map(app => app.status)));
+      case 'reportRequested':
+        values = ['Запрошен', 'Не запрошен'];
+        break;
+      case 'invoiceDate':
+        values = Array.from(new Set(applications.map(app => app.invoiceDate)));
+        break;
+      case 'inn':
+        values = Array.from(new Set(applications.map(app => app.inn)));
+        break;
+      case 'organizationName':
+        values = Array.from(new Set(applications.map(app => app.organizationName)));
+        break;
+      case 'kfVvPaid':
+        values = Array.from(new Set(applications.map(app => app.kfVvPaid)));
+        break;
+      case 'kfOdoPaid':
+        values = Array.from(new Set(applications.map(app => app.kfOdoPaid)));
+        break;
+      case 'chvPaid':
+        values = Array.from(new Set(applications.map(app => app.chvPaid)));
+        break;
+      case 'vstPaid':
+        values = Array.from(new Set(applications.map(app => app.vstPaid)));
         break;
       case 'objectType':
         values = Array.from(new Set(applications.map(app => app.objectType)));
@@ -336,14 +414,11 @@ export default function UserTable() {
       case 'responsible':
         values = Array.from(new Set(applications.map(app => app.responsible)));
         break;
+      case 'status':
+        values = Array.from(new Set(applications.map(app => app.status)));
+        break;
       case 'documentType':
         values = Array.from(new Set(applications.map(app => app.documentType)));
-        break;
-      case 'organizationName':
-        values = Array.from(new Set(applications.map(app => app.organizationName)));
-        break;
-      case 'reportRequested':
-        values = ['Запрошен', 'Не запрошен'];
         break;
       case 'hasRemarks':
         values = ['Есть замечания', 'Нет замечаний'];
@@ -352,10 +427,14 @@ export default function UserTable() {
         values = [];
     }
 
+    // Получаем координаты кнопки для позиционирования попапа
+    const triggerRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+
     setFilterPopup({
       columnKey,
       columnLabel,
-      values
+      values,
+      triggerRect
     });
   };
 
@@ -388,6 +467,9 @@ export default function UserTable() {
       
       let value: string = '';
       switch (columnKey) {
+        case 'id':
+          value = app.id.toString();
+          break;
         case 'direction':
           value = app.direction;
           break;
@@ -411,6 +493,24 @@ export default function UserTable() {
           break;
         case 'hasRemarks':
           value = app.hasRemarks ? 'Есть замечания' : 'Нет замечаний';
+          break;
+        case 'invoiceDate':
+          value = app.invoiceDate;
+          break;
+        case 'inn':
+          value = app.inn;
+          break;
+        case 'kfVvPaid':
+          value = app.kfVvPaid;
+          break;
+        case 'kfOdoPaid':
+          value = app.kfOdoPaid;
+          break;
+        case 'chvPaid':
+          value = app.chvPaid;
+          break;
+        case 'vstPaid':
+          value = app.vstPaid;
           break;
         default:
           return true;
@@ -669,59 +769,51 @@ export default function UserTable() {
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[70px]">
                 <div className="flex items-center gap-1">
                   <span>№</span>
+                  <button
+                    onClick={(e) => openFilterPopup('id', '№ заявки', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('id') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
               {/* 2. Направление */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[100px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[100px]">
                 <div className="flex items-center gap-1">
                   <span>Направление</span>
                   <button
-                    onClick={() => openFilterPopup('direction', 'Направление')}
+                    onClick={(e) => openFilterPopup('direction', 'Направление', e)}
                     className={`ml-1 ${hasActiveColumnFilter('direction') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'direction' && (
-                  <FilterPopup
-                    columnKey="direction"
-                    columnLabel="Направление"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['direction'] || []}
-                    onApply={(selected) => applyColumnFilter('direction', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 3. Запрос отчетов */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[120px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[120px]">
                 <div className="flex items-center gap-1">
                   <span>Отчеты</span>
                   <button
-                    onClick={() => openFilterPopup('reportRequested', 'Запрос отчетов')}
+                    onClick={(e) => openFilterPopup('reportRequested', 'Запрос отчетов', e)}
                     className={`ml-1 ${hasActiveColumnFilter('reportRequested') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'reportRequested' && (
-                  <FilterPopup
-                    columnKey="reportRequested"
-                    columnLabel="Запрос отчетов"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['reportRequested'] || []}
-                    onApply={(selected) => applyColumnFilter('reportRequested', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 4. Дата выставления счета */}
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[90px]">
                 <div className="flex items-center gap-1">
                   <span>Дата счета</span>
+                  <button
+                    onClick={(e) => openFilterPopup('invoiceDate', 'Дата счета', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('invoiceDate') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
@@ -734,36 +826,38 @@ export default function UserTable() {
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[100px]">
                 <div className="flex items-center gap-1">
                   <span>ИНН</span>
+                  <button
+                    onClick={(e) => openFilterPopup('inn', 'ИНН', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('inn') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
               {/* 7. Наименование организации */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[140px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[140px]">
                 <div className="flex items-center gap-1">
                   <span>Организация</span>
                   <button
-                    onClick={() => openFilterPopup('organizationName', 'Организация')}
+                    onClick={(e) => openFilterPopup('organizationName', 'Организация', e)}
                     className={`ml-1 ${hasActiveColumnFilter('organizationName') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'organizationName' && (
-                  <FilterPopup
-                    columnKey="organizationName"
-                    columnLabel="Организация"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['organizationName'] || []}
-                    onApply={(selected) => applyColumnFilter('organizationName', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 8. КФ ВВ Оплачено */}
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[90px]">
                 <div className="flex items-center gap-1">
                   <span>КФ ВВ</span>
+                  <button
+                    onClick={(e) => openFilterPopup('kfVvPaid', 'КФ ВВ Оплачено', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('kfVvPaid') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
@@ -771,6 +865,12 @@ export default function UserTable() {
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[90px]">
                 <div className="flex items-center gap-1">
                   <span>КФ ОДО</span>
+                  <button
+                    onClick={(e) => openFilterPopup('kfOdoPaid', 'КФ ОДО Оплачено', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('kfOdoPaid') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
@@ -778,6 +878,12 @@ export default function UserTable() {
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[80px]">
                 <div className="flex items-center gap-1">
                   <span>ЧВ</span>
+                  <button
+                    onClick={(e) => openFilterPopup('chvPaid', 'ЧВ Оплачено', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('chvPaid') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
@@ -785,122 +891,78 @@ export default function UserTable() {
               <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[80px]">
                 <div className="flex items-center gap-1">
                   <span>ВСТ</span>
+                  <button
+                    onClick={(e) => openFilterPopup('vstPaid', 'ВСТ Оплачено', e)}
+                    className={`ml-1 ${hasActiveColumnFilter('vstPaid') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                  >
+                    <FunnelIcon size={12} />
+                  </button>
                 </div>
               </th>
 
               {/* 12. Тип Объекта */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[120px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[120px]">
                 <div className="flex items-center gap-1">
                   <span>Тип объекта</span>
                   <button
-                    onClick={() => openFilterPopup('objectType', 'Тип объекта')}
+                    onClick={(e) => openFilterPopup('objectType', 'Тип объекта', e)}
                     className={`ml-1 ${hasActiveColumnFilter('objectType') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'objectType' && (
-                  <FilterPopup
-                    columnKey="objectType"
-                    columnLabel="Тип объекта"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['objectType'] || []}
-                    onApply={(selected) => applyColumnFilter('objectType', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 13. Ответственный */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[110px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[110px]">
                 <div className="flex items-center gap-1">
                   <span>Ответственный</span>
                   <button
-                    onClick={() => openFilterPopup('responsible', 'Ответственный')}
+                    onClick={(e) => openFilterPopup('responsible', 'Ответственный', e)}
                     className={`ml-1 ${hasActiveColumnFilter('responsible') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'responsible' && (
-                  <FilterPopup
-                    columnKey="responsible"
-                    columnLabel="Ответственный"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['responsible'] || []}
-                    onApply={(selected) => applyColumnFilter('responsible', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 14. Статус заявки */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[110px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[110px]">
                 <div className="flex items-center gap-1">
                   <span>Статус</span>
                   <button
-                    onClick={() => openFilterPopup('status', 'Статус')}
+                    onClick={(e) => openFilterPopup('status', 'Статус', e)}
                     className={`ml-1 ${hasActiveColumnFilter('status') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'status' && (
-                  <FilterPopup
-                    columnKey="status"
-                    columnLabel="Статус"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['status'] || []}
-                    onApply={(selected) => applyColumnFilter('status', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 15. Тип документа с замечаниями */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[130px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[130px]">
                 <div className="flex items-center gap-1">
                   <span>Тип документа</span>
                   <button
-                    onClick={() => openFilterPopup('documentType', 'Тип документа')}
+                    onClick={(e) => openFilterPopup('documentType', 'Тип документа', e)}
                     className={`ml-1 ${hasActiveColumnFilter('documentType') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'documentType' && (
-                  <FilterPopup
-                    columnKey="documentType"
-                    columnLabel="Тип документа"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['documentType'] || []}
-                    onApply={(selected) => applyColumnFilter('documentType', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
 
               {/* 16. Скачать замечания */}
-              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[80px] relative">
+              <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200 w-[80px]">
                 <div className="flex items-center gap-1">
                   <span>Замечания</span>
                   <button
-                    onClick={() => openFilterPopup('hasRemarks', 'Замечания')}
+                    onClick={(e) => openFilterPopup('hasRemarks', 'Замечания', e)}
                     className={`ml-1 ${hasActiveColumnFilter('hasRemarks') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <FunnelIcon size={12} />
                   </button>
                 </div>
-                {filterPopup?.columnKey === 'hasRemarks' && (
-                  <FilterPopup
-                    columnKey="hasRemarks"
-                    columnLabel="Замечания"
-                    values={filterPopup.values}
-                    selectedValues={columnFilters['hasRemarks'] || []}
-                    onApply={(selected) => applyColumnFilter('hasRemarks', selected)}
-                    onClose={() => setFilterPopup(null)}
-                  />
-                )}
               </th>
             </tr>
           </thead>
@@ -1036,56 +1098,69 @@ export default function UserTable() {
         </table>
       </div>
 
-    {/* Пагинация */}
-<div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-  <div className="text-xs sm:text-sm text-gray-700">
-    Показано <span className="font-medium">{startIndex + 1}</span> -{" "}
-    <span className="font-medium">
-      {Math.min(startIndex + itemsPerPage, filteredApplications.length)}
-    </span>{" "}
-    из <span className="font-medium">{filteredApplications.length}</span> заявок
-  </div>
-  <div className="flex items-center gap-1">
-    <button
-      onClick={() => setPage(p => Math.max(1, p - 1))}
-      disabled={page === 1}
-      className={`px-2 py-1.5 rounded-lg border text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-    >
-      <ArrowLeftIcon size={14} />
-    </button>
-    
-    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-      let pageNum: number; // Явно указываем тип number
-      if (totalPages <= 5) {
-        pageNum = i + 1;
-      } else if (page <= 3) {
-        pageNum = i + 1;
-      } else if (page >= totalPages - 2) {
-        pageNum = totalPages - 4 + i;
-      } else {
-        pageNum = page - 2 + i;
-      }
-      
-      return (
-        <button
-          key={pageNum}
-          onClick={() => setPage(pageNum)}
-          className={`px-3 py-1.5 rounded-lg border text-sm ${page === pageNum ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-        >
-          {pageNum}
-        </button>
-      );
-    })}
-    
-    <button
-      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-      disabled={page === totalPages}
-      className={`px-2 py-1.5 rounded-lg border text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
-    >
-      <ArrowRightIcon size={14} />
-    </button>
-  </div>
-</div>
+      {/* Пагинация */}
+      <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="text-xs sm:text-sm text-gray-700">
+          Показано <span className="font-medium">{startIndex + 1}</span> -{" "}
+          <span className="font-medium">
+            {Math.min(startIndex + itemsPerPage, filteredApplications.length)}
+          </span>{" "}
+          из <span className="font-medium">{filteredApplications.length}</span> заявок
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`px-2 py-1.5 rounded-lg border text-sm ${page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+          >
+            <ArrowLeftIcon size={14} />
+          </button>
+          
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum: number;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (page <= 3) {
+              pageNum = i + 1;
+            } else if (page >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = page - 2 + i;
+            }
+            
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`px-3 py-1.5 rounded-lg border text-sm ${page === pageNum ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className={`px-2 py-1.5 rounded-lg border text-sm ${page === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+          >
+            <ArrowRightIcon size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Попап фильтра - рендерится поверх всего */}
+      {filterPopup && (
+        <FilterPopup
+          columnKey={filterPopup.columnKey}
+          columnLabel={filterPopup.columnLabel}
+          values={filterPopup.values}
+          selectedValues={columnFilters[filterPopup.columnKey] || []}
+          onApply={(selected) => applyColumnFilter(filterPopup.columnKey, selected)}
+          onClose={() => setFilterPopup(null)}
+          triggerRect={filterPopup.triggerRect}
+        />
+      )}
     </div>
   );
 }

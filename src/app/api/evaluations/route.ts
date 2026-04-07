@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveEvaluation } from '@/app/lib/storage';
-import { Evaluation } from '@/app/lib/types';
+import { Evaluation } from '@/src/app/lib/types';
 
 export async function POST(request: Request) {
   try {

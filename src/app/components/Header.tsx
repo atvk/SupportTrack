@@ -1,34 +1,40 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import {
   SunIcon,
   MoonIcon,
-  SignInIcon,
-  SignOutIcon,
-  UserCircleIcon,
-  UserSwitchIcon,
-  ClipboardTextIcon,
-  UserPlusIcon,
-  PencilIcon,
-  TableIcon 
+  SignIn,
+  SignOut,
+  UserCircle,
+  UserSwitch,
 } from "@phosphor-icons/react";
-import Logo from "@/app/components/Logo";
+import Logo from "@/src/app/components/Logo";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import SignInPopup from "./SignInPopup";
 
+interface UserData {
+  id: string;
+  firstName: string;
+  lastName: string;
+  login: string;
+  email: string;
+  role: string;
+  department?: string;
+  avatar?: string;
+}
+
 type Theme = "light" | "dark";
-type ActiveTab = "plan" | "entry" | "changes";
 
 export default function Header() {
+  const [user, setUser] = useState<UserData | null>(null);
   const [theme, setTheme] = useState<Theme>("light");
-  const [activeTab, setActiveTab] = useState<ActiveTab>("entry");
   const [isSignInPopupOpen, setIsSignInPopupOpen] = useState(false);
-  const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const router = useRouter();
 
@@ -45,18 +51,16 @@ export default function Header() {
       setTheme(savedTheme);
       document.documentElement.classList.toggle("dark", savedTheme === "dark");
     }
-  }, []);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const userData = localStorage.getItem("currentUser");
-      if (userData) {
-        const user = JSON.parse(userData);
-        setCurrentUser(user);
-        redirectToUserPage(user.id);
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+      } catch (e) {
+        console.error("Ошибка парсинга user из localStorage", e);
       }
-    };
-    checkAuth();
+    }
   }, []);
 
   const redirectToUserPage = (userId: string) => {
@@ -70,7 +74,7 @@ export default function Header() {
 
   const closeSignInPopup = () => {
     setIsSignInPopupOpen(false);
-    setLogin("");
+    setEmail("");
     setPassword("");
     setError("");
   };
@@ -83,25 +87,37 @@ export default function Header() {
     try {
       const response = await fetch("/api/auth", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ login, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (response.ok) {
-        const user = await response.json();
-        setCurrentUser(user);
-        localStorage.setItem("currentUser", JSON.stringify(user));
-        closeSignInPopup();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error("Ошибка парсинга JSON:", parseError);
+        setError("Ошибка сервера. Попробуйте позже.");
+        setIsLoading(false);
+        return;
+      }
 
-        // Перенаправляем на личную страницу пользователя
-        redirectToUserPage(user.id);
+      if (response.ok && data?.id) {
+        const userData = data as UserData;
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+        closeSignInPopup();
+        redirectToUserPage(userData.id);
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Ошибка входа");
+        const errorMessage = 
+          data?.message || 
+          data?.error || 
+          `Ошибка ${response.status}: ${response.statusText}` ||
+          "Неверный email или пароль";
+        
+        setError(errorMessage);
       }
     } catch (error) {
+      console.error("Ошибка входа:", error);
       setError("Ошибка сети. Проверьте подключение к серверу.");
     } finally {
       setIsLoading(false);
@@ -109,168 +125,88 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem("currentUser");
+    setUser(null);
+    localStorage.removeItem("user");
+    document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/");
   };
 
   const handleProfileClick = () => {
-    if (currentUser) {
-      redirectToUserPage(currentUser.id);
-    }
-  };
-
-  const handleTabClick = (tab: ActiveTab) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "plan":
-        router.push("/inspection");
-        break;
-      case "entry":
-        router.push("/entry");
-        break;
-      case "changes":
-        router.push("/changes");
-        break;
+    if (user) {
+      redirectToUserPage(user.id);
     }
   };
 
   return (
     <>
       <header
-        className="min-w-[360px] max-w-[1440px] w-full px-4 sm:px-5 p-2 mx-auto
+        className="min-w-[360px] max-w-[1440px] w-full mx-auto
         flex justify-between items-center 
         bg-white text-gray-800 border-b border-b-gray-800 
         dark:border-b-white dark:bg-gray-800 dark:text-white transition-colors"
       >
-        {/* Левая часть: Логотип */}
+        <Logo />
+
         <div className="p-2 flex gap-2 justify-between items-center">
-          <TableIcon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer" />
-        </div>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title={theme === "light" ? "Тёмная тема" : "Светлая тема"}
+          >
+            {theme === "light" ? (
+              <MoonIcon size={24} />
+            ) : (
+              <SunIcon size={24} />
+            )}
+          </button>
 
-        {/* Центральная часть: Навигация с кнопками - показывается только для авторизованных пользователей */}
-        {currentUser && (
-          <nav className="flex items-center gap-1 sm:gap-2">
-            {/* Кнопка "Плановая проверка" */}
-            <button
-              onClick={() => handleTabClick("plan")}
-              className={`
-                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
-                ${activeTab === "plan" 
-                  ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700" 
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              <ClipboardTextIcon 
-                size={20} 
-                weight={activeTab === "plan" ? "fill" : "regular"}
-                className={activeTab === "plan" ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}
-              />
-              <span className="font-medium whitespace-nowrap hidden lg:inline">
-                Плановая проверка
-              </span>
-            </button>
-
-            {/* Кнопка "Вступление" - активная по умолчанию */}
-            <button
-              onClick={() => handleTabClick("entry")}
-              className={`
-                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
-                ${activeTab === "entry" 
-                  ? "bg-gray-600 text-white border border-blue-700 shadow-sm" 
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              <UserPlusIcon 
-                size={20} 
-                weight={activeTab === "entry" ? "fill" : "regular"}
-                className={activeTab === "entry" ? "text-white" : "text-gray-500 dark:text-gray-400"}
-              />
-              <span className="font-medium whitespace-nowrap hidden lg:inline">
-                Вступление
-              </span>
-            </button>
-
-            {/* Кнопка "Изменения" */}
-            <button
-              onClick={() => handleTabClick("changes")}
-              className={`
-                flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg transition-all duration-200
-                ${activeTab === "changes" 
-                  ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700" 
-                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
-                }
-              `}
-            >
-              <PencilIcon 
-                size={20} 
-                weight={activeTab === "changes" ? "fill" : "regular"}
-                className={activeTab === "changes" ? "text-purple-600 dark:text-purple-400" : "text-gray-500 dark:text-gray-400"}
-              />
-              <span className="font-medium whitespace-nowrap hidden lg:inline">
-                Изменения
-              </span>
-            </button>
-          </nav>
-        )}
-
-        {/* Правая часть: Переключение темы и управление пользователем */}
-        <div className="p-2 flex gap-2 justify-between items-center">
-          
-          {currentUser ? (
+          {user ? (
             <div className="flex items-center gap-2">
               <button
                 onClick={handleProfileClick}
-                className="flex items-center p-2 gap-2"
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                {currentUser.avatar ? (
+                {user.avatar ? (
                   <Image
-                    width={24}
-                    height={24}
-                    src={currentUser.avatar}
-                    alt={currentUser.firstName}
-                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                     rounded-full object-cover"
+                    width={32}
+                    height={32}
+                    src={user.avatar}
+                    alt={user.firstName}
+                    className="w-8 h-8 rounded-full object-cover"
                   />
                 ) : (
-                  <UserCircleIcon
-                    size={24}
-                    className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                     text-gray-600 dark:text-gray-400"
-                  />
+                  <UserCircle size={24} />
                 )}
-                <div
-                  className="grid justify-items-start text-[clamp(10px,calc(10px+1.111vw),16px)] text-gray-800 dark:text-white
-                   opacity-0 scale-95 max-[1024px]:hidden 
-                   lg:opacity-100 
-                   lg:scale-100 transition-all duration-300 
-                  "
-                >
-                  <span>{currentUser.login}</span>
-                  <span>{currentUser.role}</span>
+                <div className="hidden lg:block text-left">
+                  <div className="text-sm font-medium">{user.email || user.login}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{user.role}</div>
                 </div>
               </button>
-              <UserSwitchIcon
+
+              <button
                 onClick={openSignInPopup}
-                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                 bg-white text-gray-800 dark:text-white
-                  dark:bg-gray-800 cursor-pointer"
-              />
-              <SignOutIcon
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Сменить пользователя"
+              >
+                <UserSwitch size={24} />
+              </button>
+
+              <button
                 onClick={handleLogout}
-                className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
-              />
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                title="Выйти"
+              >
+                <SignOut size={24} />
+              </button>
             </div>
           ) : (
-            <SignInIcon
+            <button
               onClick={openSignInPopup}
-              className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 lg:w-9 lg:h-9 xl:w-10 xl:h-10
-                 bg-white text-gray-800 dark:text-white dark:bg-gray-800 cursor-pointer"
-            />
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Войти"
+            >
+              <SignIn size={24} />
+            </button>
           )}
         </div>
       </header>
@@ -278,8 +214,8 @@ export default function Header() {
       <SignInPopup
         isOpen={isSignInPopupOpen}
         onClose={closeSignInPopup}
-        login={login}
-        setLogin={setLogin}
+        email={email}
+        setEmail={setEmail}
         password={password}
         setPassword={setPassword}
         isLoading={isLoading}

@@ -1,28 +1,29 @@
 export interface UserData {
-  id: string;
-  department:string;
-  role: string;
-  login: string;
-  password: string;
+  id: string; // Строковый ID!
   firstName: string;
   lastName: string;
-  avatar: string | null;
-  createdAt: string;
+  email?: string;
+  login?: string;
+  password?: string;
+  role?: string;
+  manager?: string;
+  department?: string;
+  hasFullAccess?: boolean;
+  avatar?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface NewUserData {
-  role: string;
-  department:string;
-  login: string;
-  password: string;
+export interface UserInput {
   firstName: string;
   lastName: string;
-  avatar: string | null;
+  email?: string;
+  login?: string;
+  password?: string;
+  role?: string;
+  manager?: string;
+  department?: string;
+  hasFullAccess?: boolean;
+  avatar?: string;
 }
 
-export interface Role {
-  id: string;
-  icon: any;
-  label: string;
-  description: string;
-}

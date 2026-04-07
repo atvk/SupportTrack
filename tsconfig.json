@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "target": "es2020",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -11,17 +15,16 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
         "name": "next"
       }
     ],
-
     "paths": {
-      "@/*": ["./src/*"]
-    }
+  "@/*": ["./*"]
+}
   },
   "include": [
     "next-env.d.ts",
@@ -36,7 +39,14 @@
     "src/app/form/page.tsx",
     "src/components/EditButton.tsx",
     "src/app/users/page.tsx",
-    "src/app/users/[id]/page.jsx"
-, "src/app/page.tsx", "src/components/TableListings.tsx"  ],
-  "exclude": ["node_modules"]
+    "src/app/users/[id]/page.jsx",
+    "src/app/page.tsx",
+    "src/components/TableListings.tsx",
+    ".next/dev/types/**/*.ts",
+    "next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"
+
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

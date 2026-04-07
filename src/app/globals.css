@@ -22,7 +22,9 @@ body {
   overflow-x: hidden;
   background-color: rgb(var(--background));
   color: rgb(var(--foreground));
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
 button {
@@ -60,4 +62,13 @@ a {
 
 #__next {
   width: 100%;
+}
+
+a:focus,
+a:active,
+a:focus-visible,
+svg {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }

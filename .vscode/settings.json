@@ -1,0 +1,13 @@
+{
+    "claudeCode.disableLoginPrompt": true, 
+    "claude-code.environmentVariables": [
+    {
+      "name": "ANTHROPIC_BASE_URL",
+      "value": "https://api.deepseek.com" // Сюда вставьте скопированный Base URL
+    },
+    {
+      "name": "ANTHROPIC_AUTH_TOKEN",
+      "value": "sk-6fc542f2d72a4bc19477ef6379e78e4b" // Сюда вставьте скопированный API Key
+    }
+  ], 
+}

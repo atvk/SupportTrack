@@ -1,105 +1,99 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-const usersFilePath = path.join(process.cwd(), 'data', 'users.json');
+const dataPath = path.join(process.cwd(), 'data', 'users.json');
 
-const readUsers = () => {
+function readUsers() {
   try {
-    if (!fs.existsSync(usersFilePath)) {
+    if (!fs.existsSync(dataPath)) {
+      fs.writeFileSync(dataPath, JSON.stringify([], null, 2));
       return [];
     }
-    const data = fs.readFileSync(usersFilePath, 'utf8');
+    const data = fs.readFileSync(dataPath, 'utf8');
     return JSON.parse(data);
   } catch (error) {
+    console.error('Ошибка чтения файла:', error);
     return [];
-  }
-};
-
-const writeUsers = (users: any[]) => {
-  const dataDir = path.dirname(usersFilePath);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  fs.writeFileSync(usersFilePath, JSON.stringify(users, null, 2));
-};
-
-// Функция для проверки размера base64 изображения
-const getBase64Size = (base64String: string) => {
-  if (!base64String) return 0;
-  return (base64String.length * 3) / 4;
-};
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const { id } = params;
-    const updatedData = await request.json();
-
-    // Проверка размера аватара
-    if (updatedData.avatar && getBase64Size(updatedData.avatar) > 2 * 1024 * 1024) {
-      return NextResponse.json(
-        { message: 'Размер фотографии не должен превышать 2 МБ' },
-        { status: 400 }
-      );
-    }
-
-    const users = readUsers();
-    const userIndex = users.findIndex((user: any) => user.id === id);
-
-    if (userIndex === -1) {
-      return NextResponse.json(
-        { message: 'Пользователь не найден' },
-        { status: 404 }
-      );
-    }
-
-    users[userIndex] = {
-      ...users[userIndex],
-      ...updatedData,
-      id: users[userIndex].id,
-    };
-
-    writeUsers(users);
-
-    return NextResponse.json(users[userIndex]);
-  } catch (error) {
-    console.error('Error updating user:', error);
-    return NextResponse.json(
-      { message: 'Внутренняя ошибка сервера' },
-      { status: 500 }
-    );
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+function writeUsers(users: any[]) {
+  fs.writeFileSync(dataPath, JSON.stringify(users, null, 2));
+}
+
+// PUT – обновление пользователя
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { id } = params;
-
+    const resolvedParams = await params;
+    const userId = resolvedParams.id; // НЕ преобразуем в число!
+    
+    const updatedUser = await request.json();
     const users = readUsers();
-    const userIndex = users.findIndex((user: any) => user.id === id);
-
+    
+    console.log('🔧 Редактирование пользователя с ID:', userId);
+    console.log('📝 Новые данные:', updatedUser);
+    console.log('📋 Доступные ID:', users.map((u: any) => u.id));
+    
+    // Сравниваем как строки
+    const userIndex = users.findIndex((u: any) => String(u.id) === String(userId));
+    
     if (userIndex === -1) {
-      return NextResponse.json(
-        { message: 'Пользователь не найден' },
-        { status: 404 }
-      );
+      console.error('❌ Пользователь не найден. ID:', userId);
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
     }
-
-    const deletedUser = users.splice(userIndex, 1)[0];
+    
+    // Сохраняем id и createdAt, обновляем остальные поля
+    users[userIndex] = {
+      ...users[userIndex],
+      ...updatedUser,
+      id: userId,
+      updatedAt: new Date().toISOString()
+    };
+    
     writeUsers(users);
-
-    return NextResponse.json(deletedUser);
+    console.log('✅ Пользователь обновлен:', users[userIndex]);
+    
+    return NextResponse.json(users[userIndex]);
   } catch (error) {
-    console.error('Error deleting user:', error);
-    return NextResponse.json(
-      { message: 'Внутренняя ошибка сервера' },
-      { status: 500 }
-    );
+    console.error('PUT Error:', error);
+    return NextResponse.json({ error: 'Ошибка обновления пользователя' }, { status: 500 });
+  }
+}
+
+// DELETE – удаление пользователя
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    const resolvedParams = await params;
+    const userId = resolvedParams.id; // НЕ преобразуем в число!
+    
+    const users = readUsers();
+    
+    console.log('🗑️ Удаление пользователя с ID:', userId);
+    console.log('📋 Доступные ID в файле:', users.map((u: any) => u.id));
+    
+    // Сравниваем как строки
+    const userToDelete = users.find((u: any) => String(u.id) === String(userId));
+    
+    if (!userToDelete) {
+      console.error('❌ Пользователь не найден для удаления. ID:', userId);
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
+    }
+    
+    const filteredUsers = users.filter((u: any) => String(u.id) !== String(userId));
+    writeUsers(filteredUsers);
+    
+    console.log('✅ Пользователь удален:', userToDelete.firstName, userToDelete.lastName);
+    
+    return NextResponse.json({ message: 'Пользователь удалён' });
+  } catch (error) {
+    console.error('DELETE Error:', error);
+    return NextResponse.json({ error: 'Ошибка удаления пользователя' }, { status: 500 });
   }
 }

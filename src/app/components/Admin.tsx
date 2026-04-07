@@ -1,9 +1,12 @@
 "use client";
+
 import { PlusIcon } from "@phosphor-icons/react";
 import { useState, useEffect } from "react";
-import UserTable from "@/app/components/UserTable";
-import AddUserPopup from "@/app/components/AddUserPopup";
-import { UserData } from "@/types/users";
+import UserTable from "@/src/app/components/UserTable";
+import AddEditUserPopup from "@/src/app/components/AddEditUserPopup";
+import ErrorPopup from "@/src/app/components/ErrorPopup";
+import ConfirmDeletePopup from "@/src/app/components/ConfirmDeletePopup";
+import { UserData, UserInput } from "@/src/types/users";
 
 interface AdminProps {
   user: UserData;
@@ -12,23 +15,33 @@ interface AdminProps {
 export default function Admin({ user }: AdminProps) {
   const [users, setUsers] = useState<UserData[]>([]);
   const [message, setMessage] = useState("");
-  const [usersLoading, setUsersLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [errorPopup, setErrorPopup] = useState({ isOpen: false, message: "" });
+  const [deleteConfirmPopup, setDeleteConfirmPopup] = useState<{
+    isOpen: boolean;
+    user: UserData | null;
+  }>({ isOpen: false, user: null });
 
-  // Загрузка пользователей
+  const showError = (msg: string) =>
+    setErrorPopup({ isOpen: true, message: msg });
+  const closeError = () => setErrorPopup({ isOpen: false, message: "" });
+
   const loadUsers = async () => {
-    setUsersLoading(true);
+    setLoading(true);
     try {
-      const response = await fetch("/api/users");
-      if (response.ok) {
-        const usersData = await response.json();
-        setUsers(usersData);
+      const res = await fetch("/api/users", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      } else {
+        showError("Ошибка загрузки пользователей");
       }
-    } catch (error) {
-      console.error("Error loading users:", error);
-      setMessage("Ошибка загрузки пользователей");
+    } catch {
+      showError("Ошибка сети при загрузке");
     } finally {
-      setUsersLoading(false);
+      setLoading(false);
     }
   };
 
@@ -36,40 +49,144 @@ export default function Admin({ user }: AdminProps) {
     loadUsers();
   }, []);
 
-  const handleUserAdded = () => {
-    setMessage("Пользователь успешно добавлен!");
-    loadUsers();
+  const handleAddUser = async (userData: UserInput) => {
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      if (res.ok) {
+        setMessage("✅ Пользователь добавлен");
+        await loadUsers();
+        setTimeout(() => setMessage(""), 3000);
+        return true;
+      } else {
+        const err = await res.json();
+        showError(err.error || "Ошибка при добавлении");
+        return false;
+      }
+    } catch {
+      showError("Ошибка сети при добавлении");
+      return false;
+    }
+  };
+
+  const handleEditUser = async (userData: UserData) => {
+    const { id, createdAt, ...updateData } = userData;
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      if (res.ok) {
+        setMessage("✅ Пользователь сохранён");
+        await loadUsers();
+        setTimeout(() => setMessage(""), 3000);
+        return true;
+      } else {
+        const err = await res.json();
+        showError(err.error || "Ошибка при сохранении");
+        return false;
+      }
+    } catch {
+      showError("Ошибка сети при сохранении");
+      return false;
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    
+    console.log("=".repeat(50));
+    console.log("🗑️ УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ С ID:", userId);
+    console.log("🗑️ Тип ID:", typeof userId);
+    console.log("=".repeat(50));
+
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      console.log("📡 Статус ответа API:", res.status);
+
+      if (res.ok) {
+        setMessage("🗑️ Пользователь удалён");
+        await loadUsers();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        const err = await res.json();
+        console.error("❌ Ошибка API:", err);
+        showError(err.error || "Ошибка при удалении");
+      }
+    } catch (error) {
+      console.error("❌ Сетевая ошибка:", error);
+      showError("Ошибка сети при удалении");
+    }
+  };
+
+  const openDeleteConfirm = (user: UserData) => {
+    setDeleteConfirmPopup({ isOpen: true, user });
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirmPopup({ isOpen: false, user: null });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmPopup.user) {
+      handleDeleteUser(deleteConfirmPopup.user.id);
+      closeDeleteConfirm();
+    }
+  };
+
+  const openEditPopup = (user: UserData) => {
+    setEditingUser(user);
+    setIsPopupOpen(true);
+  };
+
+  const openAddPopup = () => {
+    setEditingUser(null);
+    setIsPopupOpen(true);
+  };
+
+  const handlePopupClose = () => {
     setIsPopupOpen(false);
+    setEditingUser(null);
+  };
+
+  const handlePopupSave = async (data: UserData | UserInput) => {
+    let success = false;
+    if (editingUser) {
+      success = await handleEditUser(data as UserData);
+    } else {
+      success = await handleAddUser(data as UserInput);
+    }
+    if (success) handlePopupClose();
+    return success;
   };
 
   return (
-    <div
-      className="mt-2 min-w-[360px] max-w-[1440px] mx-auto w-full rounded-xl
-    items-center bg-white text-gray-800 dark:bg-gray-600 transition-colors"
-    >
-      {/* Шапка */}
-      <div className="w-full px-2 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Добавить пользователя
-              </h1>
-            </div>
-          </div>
-
-          <PlusIcon
-            size={32}
-            onClick={() => setIsPopupOpen(true)}
-            className="cursor-pointer text-gray-800 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-          />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+            Управление пользователями
+          </h1>
+          <button
+            onClick={openAddPopup}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            <PlusIcon size={20} />
+            Добавить пользователя
+          </button>
         </div>
-      </div>
-      <main className="w-full px-2 py-2">
+
         {message && (
           <div
-            className={`p-4 rounded-lg mb-6 ${
-              message.includes("успешно")
+            className={`mb-4 p-3 rounded-lg ${
+              message.includes("✅") || message.includes("🗑️")
                 ? "bg-green-100 text-green-800 border border-green-200"
                 : "bg-red-100 text-red-800 border border-red-200"
             }`}
@@ -78,18 +195,37 @@ export default function Admin({ user }: AdminProps) {
           </div>
         )}
 
-        <UserTable/>
-      </main>
-      <AddUserPopup
-        isOpen={isPopupOpen}
-        onClose={() => setIsPopupOpen(false)}
-        onUserAdded={handleUserAdded}
-        onMessage={setMessage}
-      />
+        {loading ? (
+          <div className="text-center py-10 text-gray-500">Загрузка...</div>
+        ) : (
+          <UserTable
+            users={users}
+            onEdit={openEditPopup}
+            onDelete={openDeleteConfirm}
+          />
+        )}
+
+        <AddEditUserPopup
+          isOpen={isPopupOpen}
+          onClose={handlePopupClose}
+          onSave={handlePopupSave}
+          onError={showError}
+          initialData={editingUser}
+        />
+
+        <ErrorPopup
+          isOpen={errorPopup.isOpen}
+          message={errorPopup.message}
+          onClose={closeError}
+        />
+
+        <ConfirmDeletePopup
+          isOpen={deleteConfirmPopup.isOpen}
+          user={deleteConfirmPopup.user}
+          onConfirm={confirmDelete}
+          onCancel={closeDeleteConfirm}
+        />
+      </div>
     </div>
   );
 }
-
-/*    
-      
-       */

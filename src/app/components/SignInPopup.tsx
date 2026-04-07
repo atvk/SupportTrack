@@ -5,8 +5,8 @@ import PasswordInput from "./PasswordInput";
 interface SignInPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  login: string;
-  setLogin: (value: string) => void;
+  email: string;
+  setEmail: (value: string) => void;
   password: string;
   setPassword: (value: string) => void;
   isLoading: boolean;
@@ -17,8 +17,8 @@ interface SignInPopupProps {
 export default function SignInPopup({
   isOpen,
   onClose,
-  login,
-  setLogin,
+  email,
+  setEmail,
   password,
   setPassword,
   isLoading,
@@ -70,7 +70,7 @@ export default function SignInPopup({
           {/* Поле логина */}
           <div>
             <label
-              htmlFor="login"
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
               Электронная почта
@@ -78,15 +78,15 @@ export default function SignInPopup({
             <input
               type="email"
               id="login"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               placeholder="your@email.com"
             />
           </div>
 
-          {/* Поле пароля */}
+          
           <div>
             <label
               htmlFor="password"
@@ -100,22 +100,18 @@ export default function SignInPopup({
               placeholder="Введите пароль"
             />
           </div>
-
-          {/* Сообщение об ошибке */}
           {error && (
             <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 rounded-lg text-sm">
               {error}
             </div>
           )}
-
-          {/* Кнопка входа */}
           <button
             type="submit"
-            disabled={!login || !password || isLoading}
+            disabled={!email || !password || isLoading}
             className={`
               w-full py-3 px-4 rounded-lg focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition font-medium shadow-md
               ${
-                login && password && !isLoading
+                email && password && !isLoading
                   ? "bg-indigo-600 text-white hover:bg-indigo-700"
                   : "bg-gray-400 text-gray-200 cursor-not-allowed"
               }

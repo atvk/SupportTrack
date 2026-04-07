@@ -1,57 +1,64 @@
 "use client";
+
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { UserData } from "@/types/users";
-import Admin from "@/app/components/Admin";
-import Director from "@/app/components/Director";
-import Employee from "@/app/components/Employee";
-import Specialist from "@/app/components/Specialist";
+import Admin from "../../components/Admin";
+import Director from "../../components/Director";
+import Employee from "../../components/Employee";
+import Specialist from "../../components/Specialist";
+import { UserData } from "@/src/types/users";
 
 export default function UserPage() {
-  const params = useParams();
+  const { id } = useParams();
   const router = useRouter();
-  const userId = params.id as string;
-
   const [user, setUser] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch("/api/users");
-        if (response.ok) {
-          const users = await response.json();
-          const foundUser = users.find((u: UserData) => u.id === userId);
-          setUser(foundUser || null);
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      } finally {
-        setIsLoading(false);
+    const stored = localStorage.getItem("user");
+    if (!stored) {
+      router.replace("/");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored);
+      if (String(parsed.id) !== String(id)) {
+        router.replace("/");
+        return;
       }
-    };
+      setUser(parsed);
+    } catch {
+      localStorage.removeItem("user");
+      router.replace("/");
+      return;
+    } finally {
+      setLoading(false);
+    }
+  }, [id, router]);
 
-    fetchUser();
-  }, [userId]);
-
-  const Role = () => {
+  const RoleComponent = () => {
     if (!user) return null;
+    console.log("🟢 Рендерим компонент для роли:", user.role);
 
     switch (user.role) {
-      case "Админ":
+      case "Администратор":
         return <Admin user={user} />;
       case "Руководитель":
-        return <Director/>;
+        return <Director user={user} />;
       case "Сотрудник":
         return <Employee user={user} />;
       case "Специалист":
         return <Specialist user={user} />;
       default:
-        return <div className="text-center py-8">Роль не определена</div>;
+        return (
+          <div className="text-center py-8">
+            Роль не определена: {user.role}
+          </div>
+        );
     }
   };
 
-  if (isLoading) {
+  if (loading)
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -60,32 +67,11 @@ export default function UserPage() {
         </div>
       </div>
     );
-  }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-            Пользователь не найден
-          </h1>
-          <button
-            onClick={() => router.push("/")}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            Вернуться на главную
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+  if (!user) return null;
   return (
-    <main
-      className="min-w-[360px] max-w-[1440px] mx-auto w-full p-2
-    justify-between items-center bg-white text-gray-800 dark:bg-gray-800 dark:text-white transition-colors"
-    >
-    <Role />
+    <main className="min-w-[360px] max-w-[1440px] mx-auto w-full p-2 bg-white text-gray-800 dark:bg-gray-800 dark:text-white">
+      <RoleComponent />
     </main>
   );
 }

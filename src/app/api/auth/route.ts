@@ -6,46 +6,59 @@ const usersFilePath = path.join(process.cwd(), 'data', 'users.json');
 
 const readUsers = () => {
   try {
-    if (!fs.existsSync(usersFilePath)) {
-      return [];
-    }
+    if (!fs.existsSync(usersFilePath)) return [];
     const data = fs.readFileSync(usersFilePath, 'utf8');
     return JSON.parse(data);
-  } catch (error) {
+  } catch {
     return [];
   }
 };
 
 export async function POST(request: NextRequest) {
   try {
-    const { login, password } = await request.json();
+    const { email, password } = await request.json();
 
-    if (!login || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { message: 'Логин и пароль обязательны' },
+        { message: 'Email и пароль обязательны' },
         { status: 400 }
       );
     }
 
     const users = readUsers();
-    
-    // Ищем пользователя по логину и паролю
-    const user = users.find((u: any) => u.login === login && u.password === password);
+    const user = users.find((u: any) => u.email === email && u.password === password);
 
     if (!user) {
       return NextResponse.json(
-        { message: 'Неверный логин или пароль' },
+        { message: 'Неверный email или пароль' },
         { status: 401 }
       );
     }
 
-    // Возвращаем пользователя без пароля
-    const { password: _, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
+    const { password: _, ...safeUser } = user;
+    
+    // Создаём ответ с пользователем
+    const response = NextResponse.json(safeUser);
+    
+    // ✅ Храним в куке ТОЛЬКО ID и роль (не весь объект!)
+    const sessionData = {
+      id: safeUser.id,
+      role: safeUser.role,
+    };
+    
+    response.cookies.set('session', JSON.stringify(sessionData), {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 дней
+    });
+    
+    return response;
   } catch (error) {
     console.error('Auth error:', error);
     return NextResponse.json(
-      { message: 'Внутренняя ошибка сервера' },
+      { message: 'Ошибка сервера' },
       { status: 500 }
     );
   }

@@ -1,0 +1,107 @@
+[
+  {
+    "date": "2026-03-19",
+    "week": 0,
+    "contact": "https://github.com/atvk/SupportTrack",
+    "specialist": "anpav",
+    "supervisor": "atvk",
+    "topic": "Жалоба",
+    "selectedErrors": {
+      "literacy": [],
+      "needsIdentification": [],
+      "risks": [
+        "risk1"
+      ],
+      "timing": [
+        "tim1"
+      ],
+      "programWork": [
+        "pw1"
+      ],
+      "correctness": [
+        "cor5"
+      ],
+      "clarity": [
+        "cl1"
+      ]
+    },
+    "csi": 3,
+    "inspector": "atvk",
+    "comment": "Можно лучше",
+    "totalScore": 40,
+    "id": "1773950819725",
+    "createdAt": "2026-03-19T20:06:59.725Z"
+  },
+  {
+    "date": "2026-03-19",
+    "week": 1,
+    "contact": "https://github.com/atvk/SupportTrack",
+    "specialist": "anpav",
+    "supervisor": "atvk",
+    "topic": "Жалоба",
+    "selectedErrors": {
+      "clientOrientation": "ok",
+      "literacy": "ok",
+      "needsIdentification": "ok",
+      "clarity": "ok",
+      "correctness": "ok",
+      "programWork": "ok",
+      "timing": "ok",
+      "risks": "risk2"
+    },
+    "csi": 5,
+    "inspector": "atvk",
+    "comment": "Оценка была обнулена по причине критического нарушения",
+    "totalScore": 0,
+    "id": "1773951912953",
+    "createdAt": "2026-03-19T20:25:12.954Z"
+  },
+  {
+    "date": "2026-03-19",
+    "week": 21,
+    "contact": "https://github.com/atvk/SupportTrack",
+    "specialist": "anpav",
+    "supervisor": "atvk",
+    "topic": "Жалоба",
+    "selectedErrors": {
+      "clientOrientation": "co7",
+      "literacy": "lit3",
+      "needsIdentification": "ok",
+      "clarity": "ok",
+      "correctness": "ok",
+      "programWork": "ok",
+      "timing": "ok",
+      "risks": "ok"
+    },
+    "csi": 0,
+    "inspector": "atvk",
+    "comment": "",
+    "totalScore": 75,
+    "id": "1773953884864",
+    "createdAt": "2026-03-19T20:58:04.865Z"
+  },
+  {
+    "date": "2026-04-03",
+    "week": 14,
+    "contact": "https://github.com/atvk/SupportTrack",
+    "specialist": "anpav",
+    "supervisor": "atvk",
+    "topic": "Жалоба",
+    "selectedErrors": {
+      "clientOrientation": "co1",
+      "literacy": "lit1",
+      "needsIdentification": "ni4",
+      "clarity": "ok",
+      "correctness": "ok",
+      "programWork": "ok",
+      "timing": "ok",
+      "risks": "ok"
+    },
+    "csi": 0,
+    "inspector": "Антон Стебловский",
+    "comment": "",
+    "totalScore": 60,
+    "id": "1775214762685",
+    "createdAt": "2026-04-03T11:12:42.685Z"
+  }
+]

@@ -15,7 +15,7 @@
     "bcryptjs": "^3.0.2",
     "chart.js": "^4.5.1",
     "copy-to-clipboard": "^3.3.3",
-    "next": "^14.2.33",
+    "next": "^16.1.6",
     "next-auth": "^4.24.11",
     "react": "^18",
     "react-chartjs-2": "^5.3.1",

@@ -1,29 +1,39 @@
-import { ROUTES } from "@/utils/routes";
+
 import Link from "next/link";
 
 export default function Logo() {
   return (
-    <Link href={ROUTES.HOME}>
-      <svg
-        version="1.0"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 1024 1024"
-        preserveAspectRatio="xMidYMid meet"
+      <Link
+        href={'/'}
         className="
-        bg-gray-800
-        text-white  
-        dark:text-gray-800 
-        dark:bg-white 
-        cursor-pointer 
-        w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14"
+        focus:outline-none focus-visible:outline-none 
+        outline-none border-none shadow-none 
+        focus:ring-0 focus:ring-offset-0
+      "
+        style={{ outline: "none", boxShadow: "none" }}
       >
-        <g
-          transform="translate(0,1024) scale(0.1,-0.1)"
-          fill="currentColor"
-          stroke="none"
+        <svg
+          version="1.0"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1024 1024"
+          preserveAspectRatio="xMidYMid meet"
+          shapeRendering="crispEdges"
+          className="
+          bg-gray-800
+          text-white  
+          dark:text-gray-800 
+          dark:bg-white 
+          cursor-pointer 
+          w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14
+        "
         >
-          <path
-            d="M0 5120 l0 -5120 5120 0 5120 0 0 5120 0 5120 -5120 0 -5120 0 0
+          <g
+            transform="translate(0,1024) scale(0.1,-0.1)"
+            fill="currentColor"
+            stroke="none"
+          >
+            <path
+              d="M0 5120 l0 -5120 5120 0 5120 0 0 5120 0 5120 -5120 0 -5120 0 0
 -5120z m2769 3733 c46 -100 143 -182 312 -263 121 -57 198 -78 329 -86 92 -6
 147 -3 560 32 239 20 503 14 702 -16 309 -46 514 -136 668 -294 61 -63 67 -66
 112 -66 100 0 221 -71 320 -187 193 -226 260 -541 213 -987 -8 -77 -14 -140
@@ -63,17 +73,17 @@ m-2549 -1443 c131 -28 302 -99 480 -197 l97 -54 -39 -14 c-82 -31 -294 -143
 -181 158 -255 222 -74 64 -191 166 -260 228 -69 61 -177 155 -241 208 l-116
 96 53 22 c94 38 305 171 569 360 450 322 531 376 915 619 459 291 524 328 823
 477 410 205 681 305 972 359 119 22 328 20 441 -5z"
-          />
-          <path
-            d="M5114 6579 c-172 -28 -288 -70 -392 -141 l-44 -30 37 -25 c110 -75
+            />
+            <path
+              d="M5114 6579 c-172 -28 -288 -70 -392 -141 l-44 -30 37 -25 c110 -75
 214 -86 319 -34 35 17 80 47 101 68 41 40 88 132 83 161 -3 17 -7 17 -104 1z"
-          />
-          <path
-            d="M3646 6563 c38 -159 220 -272 384 -239 51 11 160 68 160 85 0 8 -85
+            />
+            <path
+              d="M3646 6563 c38 -159 220 -272 384 -239 51 11 160 68 160 85 0 8 -85
 64 -135 89 -71 35 -313 92 -392 92 -20 0 -23 -3 -17 -27z"
-          />
-        </g>
-      </svg>
-    </Link>
+            />
+          </g>
+        </svg>
+      </Link>
   );
 }

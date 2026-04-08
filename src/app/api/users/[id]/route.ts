@@ -1,99 +1,117 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PrismaClient } from '@prisma/client';
 
-const dataPath = path.join(process.cwd(), 'data', 'users.json');
+const prisma = new PrismaClient();
 
-function readUsers() {
+// GET - получить одного пользователя
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    if (!fs.existsSync(dataPath)) {
-      fs.writeFileSync(dataPath, JSON.stringify([], null, 2));
-      return [];
+    const user = await prisma.user.findUnique({
+      where: { id: params.id }
+    });
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Пользователь не найден' },
+        { status: 404 }
+      );
     }
-    const data = fs.readFileSync(dataPath, 'utf8');
-    return JSON.parse(data);
+    
+    return NextResponse.json(user);
   } catch (error) {
-    console.error('Ошибка чтения файла:', error);
-    return [];
+    console.error('❌ GET Error:', error);
+    return NextResponse.json(
+      { error: 'Ошибка загрузки пользователя' },
+      { status: 500 }
+    );
   }
 }
 
-function writeUsers(users: any[]) {
-  fs.writeFileSync(dataPath, JSON.stringify(users, null, 2));
-}
-
-// PUT – обновление пользователя
+// PUT - обновить пользователя
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
-    const userId = resolvedParams.id; // НЕ преобразуем в число!
+    const userId = params.id;
+    const body = await request.json();
     
-    const updatedUser = await request.json();
-    const users = readUsers();
+    console.log(`✏️ Обновление пользователя ${userId}`);
     
-    console.log('🔧 Редактирование пользователя с ID:', userId);
-    console.log('📝 Новые данные:', updatedUser);
-    console.log('📋 Доступные ID:', users.map((u: any) => u.id));
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      role,
+      department,
+      avatar,
+    } = body;
     
-    // Сравниваем как строки
-    const userIndex = users.findIndex((u: any) => String(u.id) === String(userId));
+    // Проверяем существование пользователя
+    const existing = await prisma.user.findUnique({
+      where: { id: userId }
+    });
     
-    if (userIndex === -1) {
-      console.error('❌ Пользователь не найден. ID:', userId);
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Пользователь не найден' },
+        { status: 404 }
+      );
     }
     
-    // Сохраняем id и createdAt, обновляем остальные поля
-    users[userIndex] = {
-      ...users[userIndex],
-      ...updatedUser,
-      id: userId,
-      updatedAt: new Date().toISOString()
+    // Подготавливаем данные для обновления
+    const updateData: any = {
+      updatedAt: new Date()
     };
     
-    writeUsers(users);
-    console.log('✅ Пользователь обновлен:', users[userIndex]);
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (email !== undefined) updateData.email = email;
+    if (password !== undefined && password !== '') updateData.password = password;
+    if (role !== undefined) updateData.role = role;
+    if (department !== undefined) updateData.department = department;
+    if (avatar !== undefined) updateData.avatar = avatar;
     
-    return NextResponse.json(users[userIndex]);
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData
+    });
+    
+    console.log('✅ Пользователь обновлен');
+    return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error('PUT Error:', error);
-    return NextResponse.json({ error: 'Ошибка обновления пользователя' }, { status: 500 });
+    console.error('❌ PUT Error:', error);
+    return NextResponse.json(
+      { error: 'Ошибка обновления пользователя' },
+      { status: 500 }
+    );
   }
 }
 
-// DELETE – удаление пользователя
+// DELETE - удалить пользователя
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const resolvedParams = await params;
-    const userId = resolvedParams.id; // НЕ преобразуем в число!
+    const userId = params.id;
+    console.log(`🗑️ Удаление пользователя ${userId}`);
     
-    const users = readUsers();
+    await prisma.user.delete({
+      where: { id: userId }
+    });
     
-    console.log('🗑️ Удаление пользователя с ID:', userId);
-    console.log('📋 Доступные ID в файле:', users.map((u: any) => u.id));
-    
-    // Сравниваем как строки
-    const userToDelete = users.find((u: any) => String(u.id) === String(userId));
-    
-    if (!userToDelete) {
-      console.error('❌ Пользователь не найден для удаления. ID:', userId);
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
-    }
-    
-    const filteredUsers = users.filter((u: any) => String(u.id) !== String(userId));
-    writeUsers(filteredUsers);
-    
-    console.log('✅ Пользователь удален:', userToDelete.firstName, userToDelete.lastName);
-    
-    return NextResponse.json({ message: 'Пользователь удалён' });
+    console.log('✅ Пользователь удален');
+    return NextResponse.json({ message: 'Пользователь успешно удалён' });
   } catch (error) {
-    console.error('DELETE Error:', error);
-    return NextResponse.json({ error: 'Ошибка удаления пользователя' }, { status: 500 });
+    console.error('❌ DELETE Error:', error);
+    return NextResponse.json(
+      { error: 'Ошибка удаления пользователя' },
+      { status: 500 }
+    );
   }
 }

@@ -1,60 +1,77 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { PrismaClient } from '@prisma/client';
 
-const dataPath = path.join(process.cwd(), 'data', 'users.json');
+const prisma = new PrismaClient();
 
-function readUsers() {
-  try {
-    if (!fs.existsSync(dataPath)) {
-      fs.writeFileSync(dataPath, JSON.stringify([], null, 2));
-      return [];
-    }
-    const data = fs.readFileSync(dataPath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Ошибка чтения файла:', error);
-    return [];
-  }
-}
-
-function writeUsers(users: any[]) {
-  fs.writeFileSync(dataPath, JSON.stringify(users, null, 2));
-}
-
-// Генерация строкового ID
-function generateId(): string {
-  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
-
+// GET - получить всех пользователей
 export async function GET() {
   try {
-    const users = readUsers();
+    console.log('📖 GET /api/users');
+    
+    const users = await prisma.user.findMany({
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    console.log(`✅ Загружено ${users.length} пользователей`);
     return NextResponse.json(users);
   } catch (error) {
-    console.error('GET Error:', error);
-    return NextResponse.json({ error: 'Ошибка загрузки пользователей' }, { status: 500 });
+    console.error('❌ GET Error:', error);
+    return NextResponse.json(
+      { error: 'Ошибка загрузки пользователей' },
+      { status: 500 }
+    );
   }
 }
 
+// POST - создать пользователя
 export async function POST(request: Request) {
   try {
-    const newUser = await request.json();
-    const users = readUsers();
+    const body = await request.json();
+    console.log('📝 Создание пользователя:', body.email);
     
-    const userToAdd = {
-      id: generateId(), // Строковый ID
-      ...newUser,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      role = 'Сотрудник',
+      department,
+      avatar,
+    } = body;
     
-    users.push(userToAdd);
-    writeUsers(users);
+    // Проверка на существующего пользователя
+    const existing = await prisma.user.findUnique({
+      where: { email }
+    });
     
-    return NextResponse.json(userToAdd, { status: 201 });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Пользователь с таким email уже существует' },
+        { status: 400 }
+      );
+    }
+    
+    const newUser = await prisma.user.create({
+      data: {
+        firstName,
+        lastName,
+        email,
+        password,
+        role,
+        department,
+        avatar,
+      }
+    });
+    
+    console.log('✅ Пользователь создан:', newUser.id);
+    return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
-    console.error('POST Error:', error);
-    return NextResponse.json({ error: 'Ошибка добавления пользователя' }, { status: 500 });
+    console.error('❌ POST Error:', error);
+    return NextResponse.json(
+      { error: 'Ошибка добавления пользователя' },
+      { status: 500 }
+    );
   }
 }

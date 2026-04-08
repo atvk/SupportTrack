@@ -1,28 +1,28 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { sql } from '@vercel/postgres';
 
 // GET - получить одного пользователя
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: params.id }
-    });
+    const { id } = await params;
     
-    if (!user) {
+    const { rows } = await sql`
+      SELECT * FROM users WHERE id = ${id}
+    `;
+    
+    if (rows.length === 0) {
       return NextResponse.json(
         { error: 'Пользователь не найден' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json(user);
+    return NextResponse.json(rows[0]);
   } catch (error) {
-    console.error('❌ GET Error:', error);
+    console.error('GET Error:', error);
     return NextResponse.json(
       { error: 'Ошибка загрузки пользователя' },
       { status: 500 }
@@ -33,13 +33,13 @@ export async function GET(
 // PUT - обновить пользователя
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id;
+    const { id } = await params;
     const body = await request.json();
     
-    console.log(`✏️ Обновление пользователя ${userId}`);
+    console.log(`✏️ Обновление пользователя ${id}`);
     
     const {
       firstName,
@@ -48,43 +48,81 @@ export async function PUT(
       password,
       role,
       department,
+      manager,
       avatar,
+      hasFullAccess
     } = body;
     
     // Проверяем существование пользователя
-    const existing = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const { rows: existing } = await sql`
+      SELECT id FROM users WHERE id = ${id}
+    `;
     
-    if (!existing) {
+    if (existing.length === 0) {
       return NextResponse.json(
         { error: 'Пользователь не найден' },
         { status: 404 }
       );
     }
     
-    // Подготавливаем данные для обновления
-    const updateData: any = {
-      updatedAt: new Date()
-    };
+    // Динамически строим UPDATE запрос
+    const updates = [];
+    const values = [];
+    let paramCounter = 1;
     
-    if (firstName !== undefined) updateData.firstName = firstName;
-    if (lastName !== undefined) updateData.lastName = lastName;
-    if (email !== undefined) updateData.email = email;
-    if (password !== undefined && password !== '') updateData.password = password;
-    if (role !== undefined) updateData.role = role;
-    if (department !== undefined) updateData.department = department;
-    if (avatar !== undefined) updateData.avatar = avatar;
+    if (firstName !== undefined) {
+      updates.push(`first_name = $${paramCounter++}`);
+      values.push(firstName);
+    }
+    if (lastName !== undefined) {
+      updates.push(`last_name = $${paramCounter++}`);
+      values.push(lastName);
+    }
+    if (email !== undefined) {
+      updates.push(`email = $${paramCounter++}`);
+      values.push(email);
+    }
+    if (password !== undefined && password !== '') {
+      updates.push(`password = $${paramCounter++}`);
+      values.push(password);
+    }
+    if (role !== undefined) {
+      updates.push(`role = $${paramCounter++}`);
+      values.push(role);
+    }
+    if (department !== undefined) {
+      updates.push(`department = $${paramCounter++}`);
+      values.push(department);
+    }
+    if (manager !== undefined) {
+      updates.push(`manager = $${paramCounter++}`);
+      values.push(manager);
+    }
+    if (avatar !== undefined) {
+      updates.push(`avatar = $${paramCounter++}`);
+      values.push(avatar);
+    }
+    if (hasFullAccess !== undefined) {
+      updates.push(`has_full_access = $${paramCounter++}`);
+      values.push(hasFullAccess);
+    }
     
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData
-    });
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+    
+    const query = `
+      UPDATE users 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramCounter}
+      RETURNING *
+    `;
+    
+    const { rows } = await sql.query(query, values);
     
     console.log('✅ Пользователь обновлен');
-    return NextResponse.json(updatedUser);
+    return NextResponse.json(rows[0]);
   } catch (error) {
-    console.error('❌ PUT Error:', error);
+    console.error('PUT Error:', error);
     return NextResponse.json(
       { error: 'Ошибка обновления пользователя' },
       { status: 500 }
@@ -95,20 +133,28 @@ export async function PUT(
 // DELETE - удалить пользователя
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = params.id;
-    console.log(`🗑️ Удаление пользователя ${userId}`);
+    const { id } = await params;
     
-    await prisma.user.delete({
-      where: { id: userId }
-    });
+    console.log(`🗑️ Удаление пользователя ${id}`);
+    
+    const { rowCount } = await sql`
+      DELETE FROM users WHERE id = ${id}
+    `;
+    
+    if (rowCount === 0) {
+      return NextResponse.json(
+        { error: 'Пользователь не найден' },
+        { status: 404 }
+      );
+    }
     
     console.log('✅ Пользователь удален');
     return NextResponse.json({ message: 'Пользователь успешно удалён' });
   } catch (error) {
-    console.error('❌ DELETE Error:', error);
+    console.error('DELETE Error:', error);
     return NextResponse.json(
       { error: 'Ошибка удаления пользователя' },
       { status: 500 }

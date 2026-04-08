@@ -1,23 +1,19 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { sql } from '@vercel/postgres';
 
 // GET - получить всех пользователей
 export async function GET() {
   try {
     console.log('📖 GET /api/users');
     
-    const users = await prisma.user.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    const { rows } = await sql`
+      SELECT * FROM users ORDER BY created_at DESC
+    `;
     
-    console.log(`✅ Загружено ${users.length} пользователей`);
-    return NextResponse.json(users);
+    console.log(`✅ Загружено ${rows.length} пользователей`);
+    return NextResponse.json(rows);
   } catch (error) {
-    console.error('❌ GET Error:', error);
+    console.error('GET Error:', error);
     return NextResponse.json(
       { error: 'Ошибка загрузки пользователей' },
       { status: 500 }
@@ -38,37 +34,41 @@ export async function POST(request: Request) {
       password,
       role = 'Сотрудник',
       department,
+      manager,
       avatar,
+      hasFullAccess = false
     } = body;
     
-    // Проверка на существующего пользователя
-    const existing = await prisma.user.findUnique({
-      where: { email }
-    });
+    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    if (existing) {
+    // Проверка на существующего пользователя
+    const { rows: existing } = await sql`
+      SELECT id FROM users WHERE email = ${email}
+    `;
+    
+    if (existing.length > 0) {
       return NextResponse.json(
         { error: 'Пользователь с таким email уже существует' },
         { status: 400 }
       );
     }
     
-    const newUser = await prisma.user.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        password,
-        role,
-        department,
-        avatar,
-      }
-    });
+    const { rows } = await sql`
+      INSERT INTO users (
+        id, first_name, last_name, email, password, role, 
+        department, manager, avatar, has_full_access, created_at, updated_at
+      ) VALUES (
+        ${id}, ${firstName}, ${lastName}, ${email}, ${password || null}, ${role},
+        ${department || null}, ${manager || null}, ${avatar || null}, ${hasFullAccess}, 
+        NOW(), NOW()
+      )
+      RETURNING *
+    `;
     
-    console.log('✅ Пользователь создан:', newUser.id);
-    return NextResponse.json(newUser, { status: 201 });
+    console.log('✅ Пользователь создан:', id);
+    return NextResponse.json(rows[0], { status: 201 });
   } catch (error) {
-    console.error('❌ POST Error:', error);
+    console.error('POST Error:', error);
     return NextResponse.json(
       { error: 'Ошибка добавления пользователя' },
       { status: 500 }

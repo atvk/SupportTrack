@@ -1,7 +1,5 @@
-DROP TABLE IF EXISTS users;
-
 -- Создаем таблицу пользователей
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(255) PRIMARY KEY,
   first_name VARCHAR(255) NOT NULL,
   last_name VARCHAR(255) NOT NULL,
@@ -9,24 +7,37 @@ CREATE TABLE users (
   password VARCHAR(255),
   role VARCHAR(255) DEFAULT 'Сотрудник',
   department VARCHAR(255),
+  manager VARCHAR(255),
   avatar TEXT,
+  has_full_access BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Создаем индекс для быстрого поиска по email
-CREATE INDEX idx_users_email ON users(email);
+-- Создаем таблицу оценок
+CREATE TABLE IF NOT EXISTS evaluations (
+  id VARCHAR(255) PRIMARY KEY,
+  date DATE NOT NULL,
+  week INTEGER NOT NULL,
+  contact TEXT,
+  specialist_id VARCHAR(255) NOT NULL,
+  supervisor_id VARCHAR(255),
+  topic VARCHAR(255),
+  selected_errors JSONB NOT NULL,
+  csi INTEGER NOT NULL,
+  inspector_id VARCHAR(255) NOT NULL,
+  comment TEXT,
+  total_score INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Внешние ключи
+  FOREIGN KEY (specialist_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (inspector_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (supervisor_id) REFERENCES users(id) ON DELETE SET NULL
+);
 
--- Добавляем тестового пользователя (опционально)
-INSERT INTO users (id, first_name, last_name, email, role, department, has_full_access, created_at, updated_at)
-VALUES (
-  'user_test_1',
-  'Администратор',
-  'Системы',
-  'admin@supporttrack.com',
-  'Админ',
-  'IT',
-  TRUE,
-  NOW(),
-  NOW()
-) ON CONFLICT (id) DO NOTHING;
+-- Создаем индексы для быстрого поиска
+CREATE INDEX IF NOT EXISTS idx_evaluations_specialist ON evaluations(specialist_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_inspector ON evaluations(inspector_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_date ON evaluations(date);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

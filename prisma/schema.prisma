@@ -4,20 +4,51 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("POSTGRES_PRISMA_URL")
+  url      = env("POSTGRES_PRISMA_URL")
 }
 
 model User {
-  id            String   @id @default(cuid())
-  firstName     String   @map("first_name")
-  lastName      String   @map("last_name")
-  email         String   @unique
+  id            String         @id
+  firstName     String         @map("first_name")
+  lastName      String         @map("last_name")
+  email         String         @unique
   password      String?
-  role          String?   @default("Сотрудник")
+  role          String?        @default("Сотрудник")
   department    String?
+  manager       String?
   avatar        String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  hasFullAccess Boolean        @default(false) @map("has_full_access")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  
+  // Связь с оценками
+  evaluations   Evaluation[]   @relation("UserEvaluations")
+  
+  // Оценки, где пользователь был инспектором
+  inspectedEvaluations Evaluation[] @relation("InspectorEvaluations")
 
   @@map("users")
+}
+
+model Evaluation {
+  id               String   @id
+  date             DateTime @map("date")
+  week             Int      @map("week")
+  contact          String?  @map("contact")
+  specialistId     String   @map("specialist_id")
+  supervisorId     String?  @map("supervisor_id")
+  topic            String?  @map("topic")
+  selectedErrors   Json     @map("selected_errors")
+  csi              Int      @map("csi")
+  inspectorId      String   @map("inspector_id")
+  comment          String?  @map("comment")
+  totalScore       Int      @map("total_score")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  // Связи
+  specialist       User     @relation("UserEvaluations", fields: [specialistId], references: [id])
+  inspector        User     @relation("InspectorEvaluations", fields: [inspectorId], references: [id])
+  supervisor       User?    @relation("SupervisorEvaluations", fields: [supervisorId], references: [id])
+
+  @@map("evaluations")
 }

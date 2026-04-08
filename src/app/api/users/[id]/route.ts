@@ -8,6 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    console.log(`📖 GET /api/users/${id}`);
     
     const { rows } = await sql`
       SELECT * FROM users WHERE id = ${id}
@@ -22,7 +23,7 @@ export async function GET(
     
     return NextResponse.json(rows[0]);
   } catch (error) {
-    console.error('GET Error:', error);
+    console.error('❌ GET Error:', error);
     return NextResponse.json(
       { error: 'Ошибка загрузки пользователя' },
       { status: 500 }
@@ -39,7 +40,8 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
     
-    console.log(`✏️ Обновление пользователя ${id}`);
+    console.log(`✏️ PUT /api/users/${id}`);
+    console.log('📝 Данные для обновления:', body);
     
     const {
       firstName,
@@ -65,64 +67,30 @@ export async function PUT(
       );
     }
     
-    // Динамически строим UPDATE запрос
-    const updates = [];
-    const values = [];
-    let paramCounter = 1;
-    
-    if (firstName !== undefined) {
-      updates.push(`first_name = $${paramCounter++}`);
-      values.push(firstName);
-    }
-    if (lastName !== undefined) {
-      updates.push(`last_name = $${paramCounter++}`);
-      values.push(lastName);
-    }
-    if (email !== undefined) {
-      updates.push(`email = $${paramCounter++}`);
-      values.push(email);
-    }
-    if (password !== undefined && password !== '') {
-      updates.push(`password = $${paramCounter++}`);
-      values.push(password);
-    }
-    if (role !== undefined) {
-      updates.push(`role = $${paramCounter++}`);
-      values.push(role);
-    }
-    if (department !== undefined) {
-      updates.push(`department = $${paramCounter++}`);
-      values.push(department);
-    }
-    if (manager !== undefined) {
-      updates.push(`manager = $${paramCounter++}`);
-      values.push(manager);
-    }
-    if (avatar !== undefined) {
-      updates.push(`avatar = $${paramCounter++}`);
-      values.push(avatar);
-    }
-    if (hasFullAccess !== undefined) {
-      updates.push(`has_full_access = $${paramCounter++}`);
-      values.push(hasFullAccess);
-    }
-    
-    updates.push(`updated_at = NOW()`);
-    values.push(id);
-    
-    const query = `
-      UPDATE users 
-      SET ${updates.join(', ')} 
-      WHERE id = $${paramCounter}
-      RETURNING *
+    // Обновляем пользователя
+    await sql`
+      UPDATE users SET
+        first_name = COALESCE(${firstName}, first_name),
+        last_name = COALESCE(${lastName}, last_name),
+        email = COALESCE(${email}, email),
+        password = CASE WHEN ${password} IS NOT NULL AND ${password} != '' THEN ${password} ELSE password END,
+        role = COALESCE(${role}, role),
+        department = COALESCE(${department}, department),
+        manager = COALESCE(${manager}, manager),
+        avatar = COALESCE(${avatar}, avatar),
+        has_full_access = COALESCE(${hasFullAccess}, has_full_access),
+        updated_at = NOW()
+      WHERE id = ${id}
     `;
     
-    const { rows } = await sql.query(query, values);
+    const { rows: updatedUser } = await sql`
+      SELECT * FROM users WHERE id = ${id}
+    `;
     
     console.log('✅ Пользователь обновлен');
-    return NextResponse.json(rows[0]);
+    return NextResponse.json(updatedUser[0]);
   } catch (error) {
-    console.error('PUT Error:', error);
+    console.error('❌ PUT Error:', error);
     return NextResponse.json(
       { error: 'Ошибка обновления пользователя' },
       { status: 500 }
@@ -137,8 +105,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    
-    console.log(`🗑️ Удаление пользователя ${id}`);
+    console.log(`🗑️ DELETE /api/users/${id}`);
     
     const { rowCount } = await sql`
       DELETE FROM users WHERE id = ${id}
@@ -154,7 +121,7 @@ export async function DELETE(
     console.log('✅ Пользователь удален');
     return NextResponse.json({ message: 'Пользователь успешно удалён' });
   } catch (error) {
-    console.error('DELETE Error:', error);
+    console.error('❌ DELETE Error:', error);
     return NextResponse.json(
       { error: 'Ошибка удаления пользователя' },
       { status: 500 }

@@ -13,7 +13,7 @@ export async function GET() {
     console.log(`✅ Загружено ${rows.length} пользователей`);
     return NextResponse.json(rows);
   } catch (error) {
-    console.error('GET Error:', error);
+    console.error('❌ GET Error:', error);
     return NextResponse.json(
       { error: 'Ошибка загрузки пользователей' },
       { status: 500 }
@@ -27,6 +27,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('📝 Создание пользователя:', body.email);
     
+    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     const {
       firstName,
       lastName,
@@ -38,8 +40,6 @@ export async function POST(request: Request) {
       avatar,
       hasFullAccess = false
     } = body;
-    
-    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Проверка на существующего пользователя
     const { rows: existing } = await sql`
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       );
     }
     
-    const { rows } = await sql`
+    await sql`
       INSERT INTO users (
         id, first_name, last_name, email, password, role, 
         department, manager, avatar, has_full_access, created_at, updated_at
@@ -62,13 +62,16 @@ export async function POST(request: Request) {
         ${department || null}, ${manager || null}, ${avatar || null}, ${hasFullAccess}, 
         NOW(), NOW()
       )
-      RETURNING *
+    `;
+    
+    const { rows: newUser } = await sql`
+      SELECT * FROM users WHERE id = ${id}
     `;
     
     console.log('✅ Пользователь создан:', id);
-    return NextResponse.json(rows[0], { status: 201 });
+    return NextResponse.json(newUser[0], { status: 201 });
   } catch (error) {
-    console.error('POST Error:', error);
+    console.error('❌ POST Error:', error);
     return NextResponse.json(
       { error: 'Ошибка добавления пользователя' },
       { status: 500 }

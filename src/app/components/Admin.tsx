@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusIcon } from "@phosphor-icons/react";
+import { UserPlusIcon } from "@phosphor-icons/react";
 import { useState, useEffect } from "react";
 import UserTable from "@/src/app/components/UserTable";
 import AddEditUserPopup from "@/src/app/components/AddEditUserPopup";
@@ -97,7 +97,6 @@ export default function Admin({ user }: AdminProps) {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    
     console.log("=".repeat(50));
     console.log("🗑️ УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ С ID:", userId);
     console.log("🗑️ Тип ID:", typeof userId);
@@ -171,15 +170,14 @@ export default function Admin({ user }: AdminProps) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+          <h1 className="text-m font-bold text-gray-800 dark:text-white">
             Управление пользователями
           </h1>
           <button
             onClick={openAddPopup}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <PlusIcon size={20} />
-            Добавить пользователя
+            <UserPlusIcon size={24} />
           </button>
         </div>
 

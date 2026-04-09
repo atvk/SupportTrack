@@ -1,80 +1,166 @@
-import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
 
-// GET - получить всех пользователей
+// Создаем пул соединений
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
 export async function GET() {
   try {
-    console.log('📖 GET /api/users');
-    
-    const { rows } = await sql`
-      SELECT * FROM users ORDER BY created_at DESC
-    `;
-    
-    console.log(`✅ Загружено ${rows.length} пользователей`);
-    return NextResponse.json(rows);
+    console.log("🔍 GET /api/users - начало");
+
+    const client = await pool.connect();
+
+    try {
+      const result = await client.query(`
+        SELECT id, first_name, last_name, email, role, department, 
+               manager, avatar, has_full_access, created_at, updated_at
+        FROM users 
+        ORDER BY created_at DESC
+      `);
+
+      console.log(`✅ Загружено ${result.rows.length} пользователей`);
+
+      const users = result.rows.map((row) => ({
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        role: row.role,
+        department: row.department,
+        manager: row.manager,
+        avatar: row.avatar,
+        hasFullAccess: row.has_full_access,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+
+      return NextResponse.json(users);
+    } finally {
+      client.release();
+    }
   } catch (error) {
-    console.error('❌ GET Error:', error);
+    const err = error as Error;
+    console.error("❌ GET Error:", err.message);
+    console.error("Stack:", err.stack);
     return NextResponse.json(
-      { error: 'Ошибка загрузки пользователей' },
-      { status: 500 }
+      { error: "Ошибка загрузки пользователей: " + err.message },
+      { status: 500 },
     );
   }
 }
 
-// POST - создать пользователя
 export async function POST(request: Request) {
+  let client;
+
   try {
+    console.log("📝 POST /api/users - начало");
+
     const body = await request.json();
-    console.log('📝 Создание пользователя:', body.email);
-    
-    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    console.log("Полученные данные:", JSON.stringify(body, null, 2));
+
     const {
       firstName,
       lastName,
       email,
       password,
-      role = 'Сотрудник',
+      role,
       department,
       manager,
       avatar,
-      hasFullAccess = false
+      hasFullAccess,
     } = body;
-    
-    // Проверка на существующего пользователя
-    const { rows: existing } = await sql`
-      SELECT id FROM users WHERE email = ${email}
-    `;
-    
-    if (existing.length > 0) {
+
+    // Валидация
+    if (!firstName || !lastName) {
+      console.error("❌ Ошибка валидации: отсутствуют имя или фамилия");
       return NextResponse.json(
-        { error: 'Пользователь с таким email уже существует' },
-        { status: 400 }
+        { error: "Имя и фамилия обязательны" },
+        { status: 400 },
       );
     }
-    
-    await sql`
+
+    if (!email) {
+      console.error("❌ Ошибка валидации: отсутствует email");
+      return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
+    }
+
+    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🆔 Сгенерирован ID: ${id}`);
+
+    client = await pool.connect();
+
+    // Проверка на существующего пользователя
+    const existing = await client.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email],
+    );
+
+    if (existing.rows.length > 0) {
+      console.error(`❌ Пользователь с email ${email} уже существует`);
+      return NextResponse.json(
+        { error: "Пользователь с таким email уже существует" },
+        { status: 400 },
+      );
+    }
+
+    // Вставка пользователя
+    const insertQuery = `
       INSERT INTO users (
         id, first_name, last_name, email, password, role, 
         department, manager, avatar, has_full_access, created_at, updated_at
-      ) VALUES (
-        ${id}, ${firstName}, ${lastName}, ${email}, ${password || null}, ${role},
-        ${department || null}, ${manager || null}, ${avatar || null}, ${hasFullAccess}, 
-        NOW(), NOW()
-      )
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+      RETURNING *
     `;
-    
-    const { rows: newUser } = await sql`
-      SELECT * FROM users WHERE id = ${id}
-    `;
-    
-    console.log('✅ Пользователь создан:', id);
-    return NextResponse.json(newUser[0], { status: 201 });
-  } catch (error) {
-    console.error('❌ POST Error:', error);
+
+    const insertValues = [
+      id,
+      firstName,
+      lastName,
+      email,
+      password || null,
+      role || "Сотрудник",
+      department || null,
+      manager || null,
+      avatar || null,
+      hasFullAccess || false,
+    ];
+
+    console.log("📝 Выполняем INSERT...");
+    const result = await client.query(insertQuery, insertValues);
+
+    const newUser = result.rows[0];
+    console.log(`✅ Пользователь создан: ${id}`);
+
     return NextResponse.json(
-      { error: 'Ошибка добавления пользователя' },
-      { status: 500 }
+      {
+        id: newUser.id,
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
+        email: newUser.email,
+        role: newUser.role,
+        department: newUser.department,
+        manager: newUser.manager,
+        avatar: newUser.avatar,
+        hasFullAccess: newUser.has_full_access,
+        createdAt: newUser.created_at,
+        updatedAt: newUser.updated_at,
+      },
+      { status: 201 },
     );
+  } catch (error) {
+    const err = error as Error;
+    console.error("❌ POST Error:", err.message);
+    console.error("Stack:", err.stack);
+    return NextResponse.json(
+      { error: "Ошибка добавления пользователя: " + err.message },
+      { status: 500 },
+    );
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 }

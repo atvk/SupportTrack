@@ -72,30 +72,43 @@ export default function Admin({ user }: AdminProps) {
     }
   };
 
-  const handleEditUser = async (userData: UserData) => {
-    const { id, createdAt, ...updateData } = userData;
-    try {
-      const res = await fetch(`/api/users/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
-      if (res.ok) {
-        setMessage("✅ Пользователь сохранён");
-        await loadUsers();
-        setTimeout(() => setMessage(""), 3000);
-        return true;
-      } else {
-        const err = await res.json();
-        showError(err.error || "Ошибка при сохранении");
-        return false;
-      }
-    } catch {
-      showError("Ошибка сети при сохранении");
+const handleEditUser = async (userData: UserData) => {
+  console.log("=".repeat(50));
+  console.log("✏️ РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ:", userData.id);
+  console.log("📝 Данные для отправки:", userData);
+  console.log("=".repeat(50));
+  
+  // Важно: не отправляем createdAt и updatedAt обратно
+  const { id, createdAt, updatedAt, ...updateData } = userData;
+  
+  try {
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData), // Отправляем только данные для обновления
+    });
+    
+    console.log("📡 Статус ответа API:", res.status);
+    
+    if (res.ok) {
+      const result = await res.json();
+      console.log("✅ Результат:", result);
+      setMessage("✅ Пользователь сохранён");
+      await loadUsers();
+      setTimeout(() => setMessage(""), 3000);
+      return true;
+    } else {
+      const err = await res.json();
+      console.error("❌ Ошибка API:", err);
+      showError(err.error || "Ошибка при сохранении");
       return false;
     }
-  };
-
+  } catch (error) {
+    console.error("❌ Сетевая ошибка:", error);
+    showError("Ошибка сети при сохранении");
+    return false;
+  }
+};
   const handleDeleteUser = async (userId: string) => {
     console.log("=".repeat(50));
     console.log("🗑️ УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ С ID:", userId);

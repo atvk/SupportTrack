@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { CRITERIA, OK_VALUE } from "@/src/app/lib/constants";
 import { Evaluation } from "@/src/app/lib/types";
 import { CalendarBlankIcon, CalendarDotIcon, ExamIcon, UserIcon } from "@phosphor-icons/react";
-import SuccessPopup from "./SuccessPopup";
+import SuccessPopup from "./EvaluationFormSuccessPopup";
 
 // Функция для вычисления номера недели в году (1-53)
 function getWeekNumber(date: Date): number {

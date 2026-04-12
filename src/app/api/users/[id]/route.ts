@@ -1,74 +1,24 @@
-import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextResponse } from "next/server";
+import { Pool } from "pg";
 
-// Создаем пул соединений
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
   ssl: { rejectUnauthorized: false },
 });
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let client;
-  
-  try {
-    const { id } = await params;
-    console.log(`🔍 GET /api/users/${id}`);
-    
-    client = await pool.connect();
-    const result = await client.query('SELECT * FROM users WHERE id = $1', [id]);
-    
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Пользователь не найден' },
-        { status: 404 }
-      );
-    }
-    
-    const user = result.rows[0];
-    
-    return NextResponse.json({
-      id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      email: user.email,
-      role: user.role,
-      department: user.department,
-      manager: user.manager,
-      avatar: user.avatar,
-      hasFullAccess: user.has_full_access,
-      createdAt: user.created_at,
-      updatedAt: user.updated_at
-    });
-  } catch (error) {
-    const err = error as Error;
-    console.error('❌ GET Error:', err.message);
-    return NextResponse.json(
-      { error: 'Ошибка загрузки пользователя: ' + err.message },
-      { status: 500 }
-    );
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-}
-
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   let client;
-  
+
   try {
     const { id } = await params;
     const body = await request.json();
-    
+
     console.log(`✏️ PUT /api/users/${id}`);
-    console.log('📦 Данные для обновления:', JSON.stringify(body, null, 2));
-    
+    console.log("📦 Данные для обновления:", JSON.stringify(body, null, 2));
+
     const {
       firstName,
       lastName,
@@ -78,46 +28,89 @@ export async function PUT(
       department,
       manager,
       avatar,
-      hasFullAccess
+      hasFullAccess,
     } = body;
-    
+
     client = await pool.connect();
-    
+
     // Проверяем существование
     const checkResult = await client.query(
-      'SELECT id FROM users WHERE id = $1',
-      [id]
+      "SELECT id FROM users WHERE id = $1",
+      [id],
     );
-    
+
     if (checkResult.rows.length === 0) {
       return NextResponse.json(
-        { error: 'Пользователь не найден' },
-        { status: 404 }
+        { error: "Пользователь не найден" },
+        { status: 404 },
       );
     }
-    
-    // Обновляем пользователя
-    const result = await client.query(
-      `UPDATE users SET
-        first_name = COALESCE($1, first_name),
-        last_name = COALESCE($2, last_name),
-        email = COALESCE($3, email),
-        password = CASE WHEN $4 IS NOT NULL AND $4 != '' THEN $4 ELSE password END,
-        role = COALESCE($5, role),
-        department = COALESCE($6, department),
-        manager = COALESCE($7, manager),
-        avatar = COALESCE($8, avatar),
-        has_full_access = COALESCE($9, has_full_access),
-        updated_at = NOW()
-      WHERE id = $10
-      RETURNING *`,
-      [firstName, lastName, email, password, role, department, manager, avatar, hasFullAccess, id]
-    );
-    
-    const updatedUser = result.rows[0];
-    
-    console.log('✅ Пользователь обновлен, avatar:', updatedUser.avatar ? 'есть' : 'нет');
-    
+
+    // Исправленный запрос - убираем CASE WHEN для password
+    let queryText = "UPDATE users SET ";
+    const queryParams: any[] = [];
+    let paramCount = 1;
+
+    if (firstName !== undefined) {
+      queryText += `first_name = $${paramCount++}, `;
+      queryParams.push(firstName);
+    }
+    if (lastName !== undefined) {
+      queryText += `last_name = $${paramCount++}, `;
+      queryParams.push(lastName);
+    }
+    if (email !== undefined) {
+      queryText += `email = $${paramCount++}, `;
+      queryParams.push(email);
+    }
+    if (password !== undefined && password !== "") {
+      queryText += `password = $${paramCount++}, `;
+      queryParams.push(password);
+    }
+    if (role !== undefined) {
+      queryText += `role = $${paramCount++}, `;
+      queryParams.push(role);
+    }
+    if (department !== undefined) {
+      queryText += `department = $${paramCount++}, `;
+      queryParams.push(department);
+    }
+    if (manager !== undefined) {
+      queryText += `manager = $${paramCount++}, `;
+      queryParams.push(manager);
+    }
+    if (avatar !== undefined) {
+      queryText += `avatar = $${paramCount++}, `;
+      queryParams.push(avatar);
+    }
+    if (hasFullAccess !== undefined) {
+      queryText += `has_full_access = $${paramCount++}, `;
+      queryParams.push(hasFullAccess);
+    }
+
+    queryText += `updated_at = NOW() WHERE id = $${paramCount}`;
+    queryParams.push(id);
+
+    console.log("📝 SQL Query:", queryText);
+    console.log("📊 Parameters:", queryParams);
+
+    const result = await client.query(queryText, queryParams);
+
+    // Получаем обновленного пользователя
+    const getResult = await client.query("SELECT * FROM users WHERE id = $1", [
+      id,
+    ]);
+    const updatedUser = getResult.rows[0];
+
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: "Не удалось получить обновленного пользователя" },
+        { status: 500 },
+      );
+    }
+
+    console.log("✅ Пользователь обновлен");
+
     return NextResponse.json({
       id: updatedUser.id,
       firstName: updatedUser.first_name,
@@ -129,50 +122,15 @@ export async function PUT(
       avatar: updatedUser.avatar,
       hasFullAccess: updatedUser.has_full_access,
       createdAt: updatedUser.created_at,
-      updatedAt: updatedUser.updated_at
+      updatedAt: updatedUser.updated_at,
     });
-    
   } catch (error) {
     const err = error as Error;
-    console.error('❌ PUT Error:', err.message);
+    console.error("❌ PUT Error:", err.message);
+    console.error("Stack:", err.stack);
     return NextResponse.json(
-      { error: 'Ошибка обновления пользователя: ' + err.message },
-      { status: 500 }
-    );
-  } finally {
-    if (client) {
-      client.release();
-    }
-  }
-}
-
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let client;
-  
-  try {
-    const { id } = await params;
-    console.log(`🗑️ DELETE /api/users/${id}`);
-    
-    client = await pool.connect();
-    const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
-    
-    if (result.rowCount === 0) {
-      return NextResponse.json(
-        { error: 'Пользователь не найден' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json({ message: 'Пользователь успешно удалён' });
-  } catch (error) {
-    const err = error as Error;
-    console.error('❌ DELETE Error:', err.message);
-    return NextResponse.json(
-      { error: 'Ошибка удаления пользователя: ' + err.message },
-      { status: 500 }
+      { error: "Ошибка обновления пользователя: " + err.message },
+      { status: 500 },
     );
   } finally {
     if (client) {

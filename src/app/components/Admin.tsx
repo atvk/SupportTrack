@@ -29,29 +29,28 @@ export default function Admin({ user }: AdminProps) {
   const closeError = () => setErrorPopup({ isOpen: false, message: "" });
 
   const loadUsers = async () => {
-  setLoading(true);
-  try {
-    
-    const res = await fetch("/api/users", { 
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache'
+    setLoading(true);
+    try {
+      const res = await fetch("/api/users", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log("📋 Загружено пользователей:", data.length);
+        setUsers(data);
+      } else {
+        showError("Ошибка загрузки пользователей");
       }
-    });
-    
-    if (res.ok) {
-      const data = await res.json();
-      console.log("📋 Загружено пользователей:", data.length);
-      setUsers(data);
-    } else {
-      showError("Ошибка загрузки пользователей");
+    } catch {
+      showError("Ошибка сети при загрузке");
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    showError("Ошибка сети при загрузке");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     loadUsers();
@@ -80,43 +79,43 @@ export default function Admin({ user }: AdminProps) {
     }
   };
 
-const handleEditUser = async (userData: UserData) => {
-  console.log("✏️ РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ:", userData.id);
-  
-  const { id, createdAt, updatedAt, ...updateData } = userData;
-  
-  try {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateData),
-    });
-    
-    console.log("📡 Статус ответа API:", res.status);
-    
-    if (res.ok) {
-      const updatedUser = await res.json();
-      console.log("✅ Обновленный пользователь:", updatedUser);
-      
-      setMessage("✅ Пользователь сохранён");
-      
-      // Принудительно обновляем список
-      await loadUsers();
-      
-      setTimeout(() => setMessage(""), 3000);
-      return true;
-    } else {
-      const err = await res.json();
-      console.error("❌ Ошибка API:", err);
-      showError(err.error || "Ошибка при сохранении");
+  const handleEditUser = async (userData: UserData) => {
+    const { id, createdAt, ...updateData } = userData;
+
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      if (res.ok) {
+        setMessage("✅ Пользователь сохранён");
+        await loadUsers();
+
+        // Если обновили текущего пользователя - отправляем событие в Header
+        const currentUserStr = localStorage.getItem("user");
+        if (currentUserStr) {
+          const currentUser = JSON.parse(currentUserStr);
+          if (currentUser.id === id) {
+            console.log("📢 Отправляем событие обновления пользователя");
+            window.dispatchEvent(new Event("user-updated"));
+          }
+        }
+
+        setTimeout(() => setMessage(""), 3000);
+        return true;
+      } else {
+        const err = await res.json();
+        showError(err.error || "Ошибка при сохранении");
+        return false;
+      }
+    } catch {
+      showError("Ошибка сети при сохранении");
       return false;
     }
-  } catch (error) {
-    console.error("❌ Сетевая ошибка:", error);
-    showError("Ошибка сети при сохранении");
-    return false;
-  }
-};
+  };
+
   const handleDeleteUser = async (userId: string) => {
     console.log("=".repeat(50));
     console.log("🗑️ УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ С ID:", userId);

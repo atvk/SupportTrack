@@ -45,13 +45,7 @@ export default function Header() {
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    }
-
+  const loadUserFromStorage = () => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
@@ -61,6 +55,58 @@ export default function Header() {
         console.error("Ошибка парсинга user из localStorage", e);
       }
     }
+  };
+
+  // Функция для обновления пользователя с сервера
+  const refreshUserFromServer = async () => {
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) return;
+    
+    try {
+      const currentUser = JSON.parse(savedUser);
+      const response = await fetch(`/api/users/${currentUser.id}`);
+      if (response.ok) {
+        const updatedUser = await response.json();
+        // Преобразуем поля из snake_case в camelCase
+        const userData: UserData = {
+          id: updatedUser.id,
+          firstName: updatedUser.firstName || updatedUser.first_name,
+          lastName: updatedUser.lastName || updatedUser.last_name,
+          login: updatedUser.login || updatedUser.email,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          department: updatedUser.department,
+          avatar: updatedUser.avatar,
+        };
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+        console.log("🔄 Пользователь обновлен:", userData.firstName);
+      }
+    } catch (error) {
+      console.error("Ошибка обновления пользователя:", error);
+    }
+  };
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as Theme;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    }
+
+    loadUserFromStorage();
+
+    // Слушаем событие обновления пользователя из Admin
+    const handleUserUpdate = () => {
+      console.log("📢 Событие обновления пользователя получено");
+      refreshUserFromServer();
+    };
+    
+    window.addEventListener('user-updated', handleUserUpdate);
+    
+    return () => {
+      window.removeEventListener('user-updated', handleUserUpdate);
+    };
   }, []);
 
   const redirectToUserPage = (userId: string) => {

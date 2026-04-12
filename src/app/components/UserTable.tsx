@@ -50,7 +50,7 @@ export default function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                 className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                 onClick={() => onEdit(user)}
               >
-                <td className="px-4 py-4 whitespace-nowrap">
+                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
                   {user.avatar ? (
                     <Image
                       src={user.avatar}
@@ -58,30 +58,25 @@ export default function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                       width={40}
                       height={40}
                       className="w-10 h-10 rounded-full object-cover"
-                      unoptimized // Добавьте для base64 изображений
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
-                      {user.firstName?.[0]}
-                      {user.lastName?.[0]}
-                    </div>
+                    <>UserPic</>
                   )}
-                </td>
-                F
+                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
                   {user.lastName} {user.firstName}
-                </td>
+                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {user.email || "-"}
-                </td>
+                  {user.email || '-'}
+                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {user.department || "-"}
-                </td>
+                  {user.department || '-'}
+                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                    {user.role || "Пользователь"}
+                    {user.role || 'Пользователь'}
                   </span>
-                </td>
+                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     onClick={(e) => {
@@ -113,8 +108,8 @@ export default function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                   >
                     <TrashIcon size={18} />
                   </button>
-                </td>
-              </tr>
+                 </td>
+               </tr>
             ))}
           </tbody>
         </table>

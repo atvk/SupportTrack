@@ -1,5 +1,4 @@
 "use client";
-
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Admin from "../../components/Admin";
@@ -41,7 +40,7 @@ export default function UserPage() {
     console.log("🟢 Рендерим компонент для роли:", user.role);
 
     switch (user.role) {
-      case "Администратор":
+      case "Админ":
         return <Admin user={user} />;
       case "Руководитель":
         return <Director user={user} />;

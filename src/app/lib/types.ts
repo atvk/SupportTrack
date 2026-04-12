@@ -18,10 +18,10 @@ export interface Evaluation {
   specialist: string;
   supervisor: string;
   topic: string;
-  selectedErrors: Record<string, string>; // criterionId -> errorId или 'ok'
-  totalScore: number;
-  csi?: number;
+  selectedErrors: Record<string, string>;
+  csi: number;
   inspector: string;
   comment: string;
+  totalScore: number;
   createdAt?: string;
 }

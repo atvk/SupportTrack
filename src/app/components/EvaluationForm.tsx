@@ -20,11 +20,15 @@ interface UserData {
   lastName: string;
   email: string;
   role: string;
+  department?: string;
   avatar?: string;
 }
 
 export default function EvaluationForm() {
   const [user, setUser] = useState<UserData | null>(null);
+  const [users, setUsers] = useState<UserData[]>([]); // Список всех пользователей
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
   const currentWeek = getWeekNumber(today);
@@ -59,7 +63,26 @@ export default function EvaluationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Загрузка пользователя из localStorage при монтировании
+  // Загрузка пользователей из базы данных
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+        console.log("📋 Загружено пользователей:", data.length);
+      } else {
+        console.error("Ошибка загрузки пользователей");
+      }
+    } catch (error) {
+      console.error("Ошибка:", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Загрузка пользователя из localStorage и списка сотрудников при монтировании
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -74,11 +97,14 @@ export default function EvaluationForm() {
         console.error("Ошибка парсинга user из localStorage", e);
       }
     }
+    
+    // Загружаем список всех пользователей
+    loadUsers();
   }, []);
 
   // Обновление текстовых полей (кроме автоматических)
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -161,6 +187,11 @@ export default function EvaluationForm() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Получаем отображаемое имя пользователя
+  const getUserDisplayName = (user: UserData) => {
+    return `${user.lastName} ${user.firstName}`;
   };
 
   return (
@@ -253,7 +284,7 @@ export default function EvaluationForm() {
           />
         </div>
 
-        {/* Специалист (кто оценивается) */}
+        {/* Специалист (выпадающий список из users) */}
         <div>
           <label
             htmlFor="specialist"
@@ -261,34 +292,55 @@ export default function EvaluationForm() {
           >
             Специалист
           </label>
-          <input
-            type="text"
+          <select
             id="specialist"
             name="specialist"
             value={formData.specialist}
             onChange={handleChange}
             required
-            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-          />
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white"
+          >
+            <option value="">Выберите специалиста</option>
+            {loadingUsers ? (
+              <option disabled>Загрузка...</option>
+            ) : (
+              users.map((user) => (
+                <option key={user.id} value={getUserDisplayName(user)}>
+                  {getUserDisplayName(user)} - {user.role || 'Сотрудник'} {user.department ? `(${user.department})` : ''}
+                </option>
+              ))
+            )}
+          </select>
         </div>
 
-        {/* СВ/ТЛ (супервайзер) */}
+        {/* СВ/ТЛ (супервайзер) - тоже выпадающий список */}
         <div>
           <label
             htmlFor="supervisor"
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
-            СВ/ТЛ
+            СВ/ТЛ (Руководитель)
           </label>
-          <input
-            type="text"
+          <select
             id="supervisor"
             name="supervisor"
             value={formData.supervisor}
             onChange={handleChange}
-            required
-            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-          />
+            className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition text-gray-900 dark:text-white"
+          >
+            <option value="">Выберите руководителя</option>
+            {loadingUsers ? (
+              <option disabled>Загрузка...</option>
+            ) : (
+              users
+                .filter(u => u.role === 'Руководитель' || u.role === 'Админ' || u.role === 'Director')
+                .map((user) => (
+                  <option key={user.id} value={getUserDisplayName(user)}>
+                    {getUserDisplayName(user)} - {user.role || 'Руководитель'}
+                  </option>
+                ))
+            )}
+          </select>
         </div>
 
         {/* Тематика обращения */}

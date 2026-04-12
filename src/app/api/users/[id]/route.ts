@@ -16,9 +16,6 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    console.log(`✏️ PUT /api/users/${id}`);
-    console.log("📦 Данные для обновления:", JSON.stringify(body, null, 2));
-
     const {
       firstName,
       lastName,
@@ -91,9 +88,6 @@ export async function PUT(
     queryText += `updated_at = NOW() WHERE id = $${paramCount}`;
     queryParams.push(id);
 
-    console.log("📝 SQL Query:", queryText);
-    console.log("📊 Parameters:", queryParams);
-
     const result = await client.query(queryText, queryParams);
 
     // Получаем обновленного пользователя
@@ -108,8 +102,6 @@ export async function PUT(
         { status: 500 },
       );
     }
-
-    console.log("✅ Пользователь обновлен");
 
     return NextResponse.json({
       id: updatedUser.id,
@@ -126,8 +118,7 @@ export async function PUT(
     });
   } catch (error) {
     const err = error as Error;
-    console.error("❌ PUT Error:", err.message);
-    console.error("Stack:", err.stack);
+
     return NextResponse.json(
       { error: "Ошибка обновления пользователя: " + err.message },
       { status: 500 },

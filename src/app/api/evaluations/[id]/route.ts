@@ -1,26 +1,35 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 // GET - получить оценку по ID
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let client;
   try {
     const { id } = await params;
+    client = await pool.connect();
+    const result = await client.query(
+      'SELECT * FROM evaluations WHERE id = $1',
+      [id]
+    );
     
-    const { rows } = await sql`
-      SELECT * FROM evaluations WHERE id = ${id}
-    `;
-    
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: 'Оценка не найдена' }, { status: 404 });
     }
     
-    return NextResponse.json(rows[0]);
+    return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error('GET Evaluation Error:', error);
     return NextResponse.json({ error: 'Ошибка загрузки оценки' }, { status: 500 });
+  } finally {
+    if (client) client.release();
   }
 }
 
@@ -29,6 +38,7 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let client;
   try {
     const { id } = await params;
     const body = await request.json();
@@ -37,36 +47,50 @@ export async function PUT(
       date,
       week,
       contact,
-      specialistId,
-      supervisorId,
+      specialist,
+      supervisor,
       topic,
       selectedErrors,
       csi,
-      inspectorId,
+      inspector,
       comment,
       totalScore
     } = body;
     
-    await sql`
-      UPDATE evaluations SET
-        date = ${date},
-        week = ${week},
-        contact = ${contact},
-        specialist_id = ${specialistId},
-        supervisor_id = ${supervisorId},
-        topic = ${topic},
-        selected_errors = ${JSON.stringify(selectedErrors)}::jsonb,
-        csi = ${csi},
-        inspector_id = ${inspectorId},
-        comment = ${comment},
-        total_score = ${totalScore}
-      WHERE id = ${id}
-    `;
+    client = await pool.connect();
     
-    return NextResponse.json({ success: true });
+    const result = await client.query(
+      `UPDATE evaluations SET
+        date = $1,
+        week = $2,
+        contact = $3,
+        specialist = $4,
+        supervisor = $5,
+        topic = $6,
+        selected_errors = $7,
+        csi = $8,
+        inspector = $9,
+        comment = $10,
+        total_score = $11
+      WHERE id = $12
+      RETURNING *`,
+      [
+        date, week, contact, specialist, supervisor || null,
+        topic, JSON.stringify(selectedErrors), csi || 0, inspector,
+        comment || null, totalScore, id
+      ]
+    );
+    
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: 'Оценка не найдена' }, { status: 404 });
+    }
+    
+    return NextResponse.json(result.rows[0]);
   } catch (error) {
     console.error('PUT Evaluation Error:', error);
     return NextResponse.json({ error: 'Ошибка обновления оценки' }, { status: 500 });
+  } finally {
+    if (client) client.release();
   }
 }
 
@@ -75,14 +99,24 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let client;
   try {
     const { id } = await params;
+    client = await pool.connect();
+    const result = await client.query(
+      'DELETE FROM evaluations WHERE id = $1 RETURNING id',
+      [id]
+    );
     
-    await sql`DELETE FROM evaluations WHERE id = ${id}`;
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Оценка не найдена' }, { status: 404 });
+    }
     
     return NextResponse.json({ message: 'Оценка удалена' });
   } catch (error) {
     console.error('DELETE Evaluation Error:', error);
     return NextResponse.json({ error: 'Ошибка удаления оценки' }, { status: 500 });
+  } finally {
+    if (client) client.release();
   }
 }

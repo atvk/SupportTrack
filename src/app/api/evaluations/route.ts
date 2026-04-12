@@ -1,81 +1,76 @@
 import { NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 // GET - получить все оценки
 export async function GET() {
+  let client;
   try {
-    const { rows } = await sql`
-      SELECT e.*, 
-             u1.first_name as specialist_first_name, u1.last_name as specialist_last_name,
-             u2.first_name as inspector_first_name, u2.last_name as inspector_last_name,
-             u3.first_name as supervisor_first_name, u3.last_name as supervisor_last_name
-      FROM evaluations e
-      LEFT JOIN users u1 ON e.specialist_id = u1.id
-      LEFT JOIN users u2 ON e.inspector_id = u2.id
-      LEFT JOIN users u3 ON e.supervisor_id = u3.id
-      ORDER BY e.date DESC
-    `;
-    
-    const evaluations = rows.map(row => ({
-      ...row,
-      specialist: row.specialist_id ? {
-        id: row.specialist_id,
-        firstName: row.specialist_first_name,
-        lastName: row.specialist_last_name
-      } : null,
-      inspector: row.inspector_id ? {
-        id: row.inspector_id,
-        firstName: row.inspector_first_name,
-        lastName: row.inspector_last_name
-      } : null,
-      supervisor: row.supervisor_id ? {
-        id: row.supervisor_id,
-        firstName: row.supervisor_first_name,
-        lastName: row.supervisor_last_name
-      } : null
-    }));
-    
-    return NextResponse.json(evaluations);
+    client = await pool.connect();
+    const result = await client.query(
+      'SELECT * FROM evaluations ORDER BY date DESC, created_at DESC'
+    );
+    return NextResponse.json(result.rows);
   } catch (error) {
     console.error('GET Evaluations Error:', error);
     return NextResponse.json({ error: 'Ошибка загрузки оценок' }, { status: 500 });
+  } finally {
+    if (client) client.release();
   }
 }
 
-// POST - создать оценку
+// POST - создать новую оценку
 export async function POST(request: Request) {
+  let client;
   try {
     const body = await request.json();
+    console.log('📝 Создание оценки:', body);
+    
     const id = `${Date.now()}`;
     
     const {
       date,
       week,
       contact,
-      specialistId,
-      supervisorId,
+      specialist,
+      supervisor,
       topic,
       selectedErrors,
       csi,
-      inspectorId,
+      inspector,
       comment,
       totalScore
     } = body;
     
-    await sql`
-      INSERT INTO evaluations (
-        id, date, week, contact, specialist_id, supervisor_id, 
-        topic, selected_errors, csi, inspector_id, comment, total_score, created_at
-      ) VALUES (
-        ${id}, ${date}, ${week}, ${contact}, ${specialistId}, ${supervisorId},
-        ${topic}, ${JSON.stringify(selectedErrors)}::jsonb, ${csi}, ${inspectorId}, 
-        ${comment}, ${totalScore}, NOW()
-      )
-    `;
+    client = await pool.connect();
     
-    return NextResponse.json({ id, ...body }, { status: 201 });
+    const result = await client.query(
+      `INSERT INTO evaluations (
+        id, date, week, contact, specialist, supervisor, 
+        topic, selected_errors, csi, inspector, comment, total_score, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+      RETURNING *`,
+      [
+        id, date, week, contact, specialist, supervisor || null,
+        topic, JSON.stringify(selectedErrors), csi || 0, inspector, 
+        comment || null, totalScore
+      ]
+    );
+    
+    console.log('✅ Оценка создана:', id);
+    return NextResponse.json(result.rows[0], { status: 201 });
+    
   } catch (error) {
     console.error('POST Evaluation Error:', error);
-    return NextResponse.json({ error: 'Ошибка создания оценки' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Ошибка создания оценки: ' + (error as Error).message },
+      { status: 500 }
+    );
+  } finally {
+    if (client) client.release();
   }
 }

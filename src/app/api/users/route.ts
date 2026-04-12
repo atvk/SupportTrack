@@ -9,8 +9,6 @@ const pool = new Pool({
 
 export async function GET() {
   try {
-    console.log("🔍 GET /api/users - начало");
-
     const client = await pool.connect();
 
     try {
@@ -21,8 +19,7 @@ export async function GET() {
         ORDER BY created_at DESC
       `);
 
-      console.log(`✅ Загружено ${result.rows.length} пользователей`);
-
+    
       const users = result.rows.map((row) => ({
         id: row.id,
         firstName: row.first_name,
@@ -43,8 +40,7 @@ export async function GET() {
     }
   } catch (error) {
     const err = error as Error;
-    console.error("❌ GET Error:", err.message);
-    console.error("Stack:", err.stack);
+    
     return NextResponse.json(
       { error: "Ошибка загрузки пользователей: " + err.message },
       { status: 500 },
@@ -56,10 +52,9 @@ export async function POST(request: Request) {
   let client;
 
   try {
-    console.log("📝 POST /api/users - начало");
-
+    
     const body = await request.json();
-    console.log("Полученные данные:", JSON.stringify(body, null, 2));
+    
 
     const {
       firstName,
@@ -75,7 +70,7 @@ export async function POST(request: Request) {
 
     // Валидация
     if (!firstName || !lastName) {
-      console.error("❌ Ошибка валидации: отсутствуют имя или фамилия");
+      
       return NextResponse.json(
         { error: "Имя и фамилия обязательны" },
         { status: 400 },
@@ -83,13 +78,12 @@ export async function POST(request: Request) {
     }
 
     if (!email) {
-      console.error("❌ Ошибка валидации: отсутствует email");
+      
       return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
     }
 
     const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log(`🆔 Сгенерирован ID: ${id}`);
-
+    
     client = await pool.connect();
 
     // Проверка на существующего пользователя
@@ -99,7 +93,7 @@ export async function POST(request: Request) {
     );
 
     if (existing.rows.length > 0) {
-      console.error(`❌ Пользователь с email ${email} уже существует`);
+      
       return NextResponse.json(
         { error: "Пользователь с таким email уже существует" },
         { status: 400 },
@@ -132,7 +126,7 @@ export async function POST(request: Request) {
     const result = await client.query(insertQuery, insertValues);
 
     const newUser = result.rows[0];
-    console.log(`✅ Пользователь создан: ${id}`);
+    
 
     return NextResponse.json(
       {
@@ -152,8 +146,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const err = error as Error;
-    console.error("❌ POST Error:", err.message);
-    console.error("Stack:", err.stack);
+    
     return NextResponse.json(
       { error: "Ошибка добавления пользователя: " + err.message },
       { status: 500 },

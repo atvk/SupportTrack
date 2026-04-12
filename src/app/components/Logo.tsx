@@ -12,6 +12,8 @@ export default function Logo() {
       "
         style={{ outline: "none", boxShadow: "none" }}
       >
+
+
         <svg
           version="1.0"
           xmlns="http://www.w3.org/2000/svg"
@@ -84,6 +86,9 @@ m-2549 -1443 c131 -28 302 -99 480 -197 l97 -54 -39 -14 c-82 -31 -294 -143
             />
           </g>
         </svg>
+
+
+        
       </Link>
   );
 }

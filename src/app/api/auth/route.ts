@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { Pool } from 'pg';
 
-const usersFilePath = path.join(process.cwd(), 'data', 'users.json');
-
-const readUsers = () => {
-  try {
-    if (!fs.existsSync(usersFilePath)) return [];
-    const data = fs.readFileSync(usersFilePath, 'utf8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-};
+// Создаем пул соединений с базой данных
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
 export async function POST(request: NextRequest) {
+  let client;
+  
   try {
     const { email, password } = await request.json();
+
+    console.log(`🔐 Попытка входа: ${email}`);
 
     if (!email || !password) {
       return NextResponse.json(
@@ -25,29 +22,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const users = readUsers();
-    const user = users.find((u: any) => u.email === email && u.password === password);
+    // Подключаемся к базе данных на Vercel
+    client = await pool.connect();
+    
+    // Ищем пользователя в БД (не в файле!)
+    const result = await client.query(
+      `SELECT id, first_name, last_name, email, password, role, department, 
+              manager, avatar, has_full_access, created_at, updated_at
+       FROM users 
+       WHERE email = $1`,
+      [email]
+    );
+    
+    const user = result.rows[0];
 
     if (!user) {
+      console.log(`❌ Пользователь не найден в БД: ${email}`);
       return NextResponse.json(
         { message: 'Неверный email или пароль' },
         { status: 401 }
       );
     }
 
-    const { password: _, ...safeUser } = user;
+    // Проверка пароля (сравниваем с тем, что в БД)
+    if (user.password !== password) {
+      console.log(`❌ Неверный пароль для: ${email}`);
+      return NextResponse.json(
+        { message: 'Неверный email или пароль' },
+        { status: 401 }
+      );
+    }
+
+    console.log(`✅ Успешный вход: ${email} из БД`);
+
+    // Формируем безопасный объект пользователя (без пароля)
+    const safeUser = {
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      manager: user.manager,
+      avatar: user.avatar,
+      hasFullAccess: user.has_full_access,
+    };
     
     // Создаём ответ с пользователем
     const response = NextResponse.json(safeUser);
     
-    // ✅ Храним в куке ТОЛЬКО ID и роль (не весь объект!)
+    // Храним в куке ID и роль
     const sessionData = {
       id: safeUser.id,
       role: safeUser.role,
+      email: safeUser.email,
     };
     
     response.cookies.set('session', JSON.stringify(sessionData), {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
@@ -55,11 +87,17 @@ export async function POST(request: NextRequest) {
     });
     
     return response;
+    
   } catch (error) {
-    console.error('Auth error:', error);
+    const err = error as Error;
+    console.error('❌ Auth error:', err.message);
     return NextResponse.json(
-      { message: 'Ошибка сервера' },
+      { message: 'Ошибка сервера при авторизации' },
       { status: 500 }
     );
+  } finally {
+    if (client) {
+      client.release();
+    }
   }
 }

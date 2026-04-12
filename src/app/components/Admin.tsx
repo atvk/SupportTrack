@@ -79,42 +79,60 @@ export default function Admin({ user }: AdminProps) {
     }
   };
 
-  const handleEditUser = async (userData: UserData) => {
-    const { id, createdAt, ...updateData } = userData;
-
-    try {
-      const res = await fetch(`/api/users/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
-
-      if (res.ok) {
-        setMessage("✅ Пользователь сохранён");
-        await loadUsers();
-
-        // Если обновили текущего пользователя - отправляем событие в Header
-        const currentUserStr = localStorage.getItem("user");
-        if (currentUserStr) {
-          const currentUser = JSON.parse(currentUserStr);
-          if (currentUser.id === id) {
-            console.log("📢 Отправляем событие обновления пользователя");
-            window.dispatchEvent(new Event("user-updated"));
-          }
+ const handleEditUser = async (userData: UserData) => {
+  const { id, createdAt, ...updateData } = userData;
+  
+  try {
+    const res = await fetch(`/api/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData),
+    });
+    
+    if (res.ok) {
+      const updatedUser = await res.json();
+      console.log("✅ Пользователь сохранён:", updatedUser);
+      
+      setMessage("✅ Пользователь сохранён");
+      await loadUsers();
+      
+      // Обновляем localStorage, если это текущий пользователь
+      const currentUserStr = localStorage.getItem("user");
+      if (currentUserStr) {
+        const currentUser = JSON.parse(currentUserStr);
+        if (currentUser.id === id) {
+          // Обновляем данные в localStorage
+          const updatedUserForStorage = {
+            ...currentUser,
+            id: updatedUser.id,
+            firstName: updatedUser.firstName || updatedUser.first_name,
+            lastName: updatedUser.lastName || updatedUser.last_name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            department: updatedUser.department,
+            avatar: updatedUser.avatar,
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUserForStorage));
+          
+          // Отправляем событие в Header
+          window.dispatchEvent(new Event('user-updated'));
+          console.log("📢 Событие обновления отправлено");
         }
-
-        setTimeout(() => setMessage(""), 3000);
-        return true;
-      } else {
-        const err = await res.json();
-        showError(err.error || "Ошибка при сохранении");
-        return false;
       }
-    } catch {
-      showError("Ошибка сети при сохранении");
+      
+      setTimeout(() => setMessage(""), 3000);
+      return true;
+    } else {
+      const err = await res.json();
+      showError(err.error || "Ошибка при сохранении");
       return false;
     }
-  };
+  } catch (error) {
+    console.error("❌ Сетевая ошибка:", error);
+    showError("Ошибка сети при сохранении");
+    return false;
+  }
+};
 
   const handleDeleteUser = async (userId: string) => {
     console.log("=".repeat(50));

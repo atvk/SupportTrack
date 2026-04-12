@@ -61,7 +61,7 @@ export default function Header() {
   const refreshUserFromServer = async () => {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
-    
+
     try {
       const currentUser = JSON.parse(savedUser);
       const response = await fetch(`/api/users/${currentUser.id}`);
@@ -96,16 +96,17 @@ export default function Header() {
 
     loadUserFromStorage();
 
-    // Слушаем событие обновления пользователя из Admin
+    // Слушаем событие обновления пользователя
     const handleUserUpdate = () => {
       console.log("📢 Событие обновления пользователя получено");
-      refreshUserFromServer();
+      // Просто перезагружаем из localStorage
+      loadUserFromStorage();
     };
-    
-    window.addEventListener('user-updated', handleUserUpdate);
-    
+
+    window.addEventListener("user-updated", handleUserUpdate);
+
     return () => {
-      window.removeEventListener('user-updated', handleUserUpdate);
+      window.removeEventListener("user-updated", handleUserUpdate);
     };
   }, []);
 
@@ -154,12 +155,12 @@ export default function Header() {
         closeSignInPopup();
         redirectToUserPage(userData.id);
       } else {
-        const errorMessage = 
-          data?.message || 
-          data?.error || 
+        const errorMessage =
+          data?.message ||
+          data?.error ||
           `Ошибка ${response.status}: ${response.statusText}` ||
           "Неверный email или пароль";
-        
+
         setError(errorMessage);
       }
     } catch (error) {
@@ -199,11 +200,7 @@ export default function Header() {
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             title={theme === "light" ? "Тёмная тема" : "Светлая тема"}
           >
-            {theme === "light" ? (
-              <MoonIcon size={24} />
-            ) : (
-              <SunIcon size={24} />
-            )}
+            {theme === "light" ? <MoonIcon size={24} /> : <SunIcon size={24} />}
           </button>
 
           {user ? (
@@ -224,8 +221,12 @@ export default function Header() {
                   <UserCircle size={24} />
                 )}
                 <div className="hidden lg:block text-left">
-                  <div className="text-sm font-medium">{user.email || user.login}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{user.role}</div>
+                  <div className="text-sm font-medium">
+                    {user.email || user.login}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {user.role}
+                  </div>
                 </div>
               </button>
 

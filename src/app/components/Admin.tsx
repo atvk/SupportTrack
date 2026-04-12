@@ -29,21 +29,29 @@ export default function Admin({ user }: AdminProps) {
   const closeError = () => setErrorPopup({ isOpen: false, message: "" });
 
   const loadUsers = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/users", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      } else {
-        showError("Ошибка загрузки пользователей");
+  setLoading(true);
+  try {
+    
+    const res = await fetch("/api/users", { 
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
       }
-    } catch {
-      showError("Ошибка сети при загрузке");
-    } finally {
-      setLoading(false);
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      console.log("📋 Загружено пользователей:", data.length);
+      setUsers(data);
+    } else {
+      showError("Ошибка загрузки пользователей");
     }
-  };
+  } catch {
+    showError("Ошибка сети при загрузке");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadUsers();
@@ -73,28 +81,28 @@ export default function Admin({ user }: AdminProps) {
   };
 
 const handleEditUser = async (userData: UserData) => {
-  console.log("=".repeat(50));
   console.log("✏️ РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ:", userData.id);
-  console.log("📝 Данные для отправки:", userData);
-  console.log("=".repeat(50));
   
-  // Важно: не отправляем createdAt и updatedAt обратно
   const { id, createdAt, updatedAt, ...updateData } = userData;
   
   try {
     const res = await fetch(`/api/users/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateData), // Отправляем только данные для обновления
+      body: JSON.stringify(updateData),
     });
     
     console.log("📡 Статус ответа API:", res.status);
     
     if (res.ok) {
-      const result = await res.json();
-      console.log("✅ Результат:", result);
+      const updatedUser = await res.json();
+      console.log("✅ Обновленный пользователь:", updatedUser);
+      
       setMessage("✅ Пользователь сохранён");
+      
+      // Принудительно обновляем список
       await loadUsers();
+      
       setTimeout(() => setMessage(""), 3000);
       return true;
     } else {

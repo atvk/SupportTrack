@@ -114,7 +114,7 @@ export default function AddEditUserPopup({
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
+  
   const handleImageUpload = async (file: File) => {
     if (file.size > 2 * 1024 * 1024) {
       onError("Размер фотографии не должен превышать 2 МБ");
@@ -124,12 +124,14 @@ export default function AddEditUserPopup({
       onError("Пожалуйста, выберите файл изображения");
       return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
+      const avatarData = e.target?.result as string;
+      console.log("📸 Фото загружено, длина:", avatarData.length);
       setFormData((prev) => ({
         ...prev,
-        avatar: e.target?.result as string,
+        avatar: avatarData,
       }));
     };
     reader.onerror = () => onError("Ошибка при загрузке файла");
@@ -148,48 +150,54 @@ export default function AddEditUserPopup({
       onError("Имя обязательно для заполнения");
       return;
     }
-    
+
     if (!formData.lastName?.trim()) {
       onError("Фамилия обязательна для заполнения");
       return;
     }
-    
+
     if (!formData.email?.trim()) {
       onError("Email обязателен для заполнения");
       return;
     }
-    
+
     if (!isEditing && !formData.password?.trim()) {
       onError("Пароль обязателен для нового пользователя");
       return;
     }
 
-    if (!formData.role) {
-      onError("Пожалуйста, выберите роль пользователя");
-      return;
-    }
-
     setSaving(true);
-    let success = false;
-    
-    if (isEditing && initialData) {
-      const updateData: UserData = {
-        id: initialData.id,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        department: formData.department,
-        role: formData.role,
-        avatar: formData.avatar,
-        createdAt: initialData.createdAt,
-        ...(formData.password && { password: formData.password }),
-      };
-      success = await onSave(updateData);
-    } else {
-      const { ...newUserData } = formData;
-      success = await onSave(newUserData);
-    }
-    
+
+    // ВАЖНО: Убедитесь, что avatar включен в данные
+    const dataToSend =
+      isEditing && initialData
+        ? {
+            id: initialData.id,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password || undefined,
+            role: formData.role,
+            department: formData.department,
+            manager: formData.manager,
+            avatar: formData.avatar, // ← avatar должен быть здесь!
+            hasFullAccess: formData.hasFullAccess,
+          }
+        : {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            role: formData.role,
+            department: formData.department,
+            manager: formData.manager,
+            avatar: formData.avatar, // ← avatar должен быть здесь!
+            hasFullAccess: formData.hasFullAccess,
+          };
+
+    console.log("📤 Отправляем данные:", dataToSend);
+
+    const success = await onSave(dataToSend);
     setSaving(false);
     if (success) {
       onClose();
@@ -272,7 +280,7 @@ export default function AddEditUserPopup({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleImageUpload(file);
-                  e.target.value = '';
+                  e.target.value = "";
                 }}
                 accept="image/*"
                 className="hidden"
@@ -399,7 +407,7 @@ export default function AddEditUserPopup({
             </label>
             <input
               type="text"
-              value={formData.department || ''}
+              value={formData.department || ""}
               onChange={(e) => handleChange("department", e.target.value)}
               className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-colors"
               placeholder="Например: Центр поддержки клиентов"
@@ -430,7 +438,7 @@ export default function AddEditUserPopup({
             </label>
             <input
               type="password"
-              value={formData.password || ''}
+              value={formData.password || ""}
               onChange={(e) => handleChange("password", e.target.value)}
               required={!isEditing}
               className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 transition-colors"

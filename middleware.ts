@@ -6,7 +6,7 @@ const ADMIN_EMAIL = "steblovskiyanton@gmail.com";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  const protectedRoutes = ['/users', '/admin', '/specialist'];
+  const protectedRoutes = ['/users', '/admin', '/specialist', '/company'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
   if (!isProtectedRoute) {
@@ -71,5 +71,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/users/:path*', '/admin/:path*', '/specialist/:path*'],
+  matcher: ['/users/:path*', '/admin/:path*', '/specialist/:path*', '/company/:path*'],
 };

@@ -9,6 +9,8 @@ import {
   Tooltip,
 } from "chart.js";
 import { Pie } from "react-chartjs-2";
+import { useRouter } from "next/navigation";
+import { UsersFourIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react";
 import UserTable from "@/src/app/components/UserTable";
 import AddEditUserPopup from "@/src/app/components/AddEditUserPopup";
 import ErrorPopup from "@/src/app/components/ErrorPopup";
@@ -22,6 +24,7 @@ interface AdminProps {
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function Admin({ user }: AdminProps) {
+  const router = useRouter();
   const [users, setUsers] = useState<UserData[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +39,10 @@ export default function Admin({ user }: AdminProps) {
     { id?: number; name: string; reviewUrl: string }[]
   >([]);
   const [savingDepartments, setSavingDepartments] = useState(false);
+  const [companies, setCompanies] = useState<{ id: number; name: string; employees_count?: number }[]>([]);
+  const [companyPopupOpen, setCompanyPopupOpen] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
 
   const showError = (msg: string) =>
     setErrorPopup({ isOpen: true, message: msg });
@@ -65,6 +72,20 @@ export default function Admin({ user }: AdminProps) {
     }
   };
 
+  const loadCompanies = async () => {
+    try {
+      const res = await fetch("/api/admin/companies", { cache: "no-store" });
+      if (!res.ok) {
+        showError("Ошибка загрузки компаний");
+        return;
+      }
+      const data = await res.json();
+      setCompanies(data);
+    } catch {
+      showError("Ошибка сети при загрузке компаний");
+    }
+  };
+
   const loadSpecialistDepartments = async () => {
     try {
       const res = await fetch("/api/admin/specialist-departments", {
@@ -83,7 +104,65 @@ export default function Admin({ user }: AdminProps) {
   useEffect(() => {
     loadUsers();
     loadSpecialistDepartments();
+    loadCompanies();
   }, []);
+
+  const openAddCompanyPopup = () => {
+    setEditingCompanyId(null);
+    setCompanyName("");
+    setCompanyPopupOpen(true);
+  };
+
+  const openEditCompanyPopup = (companyId: number, name: string) => {
+    setEditingCompanyId(companyId);
+    setCompanyName(name);
+    setCompanyPopupOpen(true);
+  };
+
+  const saveCompany = async () => {
+    if (!companyName.trim()) {
+      showError("Название компании обязательно");
+      return;
+    }
+    const isEditing = editingCompanyId !== null;
+    try {
+      const res = await fetch(
+        isEditing ? `/api/admin/companies/${editingCompanyId}` : "/api/admin/companies",
+        {
+          method: isEditing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: companyName.trim() }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json();
+        showError(err.error || "Ошибка сохранения компании");
+        return;
+      }
+      setCompanyPopupOpen(false);
+      setMessage(isEditing ? "✅ Компания обновлена" : "✅ Компания добавлена");
+      await loadCompanies();
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      showError("Ошибка сети при сохранении компании");
+    }
+  };
+
+  const deleteCompany = async (companyId: number) => {
+    try {
+      const res = await fetch(`/api/admin/companies/${companyId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json();
+        showError(err.error || "Ошибка удаления компании");
+        return;
+      }
+      setMessage("✅ Компания удалена");
+      await loadCompanies();
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      showError("Ошибка сети при удалении компании");
+    }
+  };
 
   const updateSpecialistDepartment = (
     index: number,
@@ -355,6 +434,62 @@ export default function Admin({ user }: AdminProps) {
             <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  Компании
+                </h2>
+                <button
+                  onClick={openAddCompanyPopup}
+                  className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                  title="Добавить компанию"
+                >
+                  <UsersFourIcon size={32} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {companies.length === 0 ? (
+                  <div className="text-gray-500">Компаний пока нет</div>
+                ) : (
+                  companies.map((company) => (
+                    <div
+                      key={company.id}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      onClick={() => router.push(`/admin/company/${company.id}`)}
+                    >
+                      <div>
+                        <div className="font-medium text-gray-800 dark:text-white">{company.name}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-300">
+                          Сотрудников: {company.employees_count || 0}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCompanyPopup(company.id, company.name);
+                          }}
+                          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                          <PencilSimpleIcon size={18} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCompany(company.id);
+                          }}
+                          className="p-2 rounded-md hover:bg-red-100 text-red-600"
+                        >
+                          <TrashIcon size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
                   Настройка страницы специалиста
                 </h2>
                 <button
@@ -442,6 +577,36 @@ export default function Admin({ user }: AdminProps) {
           onConfirm={confirmDelete}
           onCancel={closeDeleteConfirm}
         />
+
+        {companyPopupOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl p-5 shadow-xl">
+              <h3 className="text-lg font-semibold mb-4">
+                {editingCompanyId ? "Редактировать компанию" : "Добавить компанию"}
+              </h3>
+              <input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Название компании"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700"
+              />
+              <div className="mt-4 flex gap-2 justify-end">
+                <button
+                  onClick={() => setCompanyPopupOpen(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={saveCompany}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

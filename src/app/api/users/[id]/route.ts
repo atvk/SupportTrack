@@ -8,6 +8,7 @@ import {
   readSession,
   validatePasswordPolicy,
 } from "../../../lib/auth";
+import { ensureCompanySchema } from "../../../lib/companySchema";
 
 const pool = new Pool({
   ...getPoolConfig(),
@@ -33,9 +34,10 @@ export async function GET(
 
     client = await pool.connect();
     await ensureAdminUser(client);
+    await ensureCompanySchema(client);
 
     const result = await client.query(
-      `SELECT id, first_name, last_name, email, role, department,
+      `SELECT id, first_name, last_name, email, role, department, company_id,
               manager, avatar, has_full_access, created_at, updated_at
        FROM users
        WHERE id = $1`,
@@ -54,6 +56,7 @@ export async function GET(
       email: user.email,
       role: user.role,
       department: user.department,
+      companyId: user.company_id,
       manager: user.manager,
       avatar: user.avatar,
       hasFullAccess: user.has_full_access,
@@ -98,10 +101,12 @@ export async function PUT(
       manager,
       avatar,
       hasFullAccess,
+      companyId,
     } = body;
 
     client = await pool.connect();
     await ensureAdminUser(client);
+    await ensureCompanySchema(client);
 
     // Проверяем существование
     const checkResult = await client.query(
@@ -162,6 +167,10 @@ export async function PUT(
       queryText += `has_full_access = $${paramCount++}, `;
       queryParams.push(hasFullAccess);
     }
+    if (companyId !== undefined) {
+      queryText += `company_id = $${paramCount++}, `;
+      queryParams.push(companyId || null);
+    }
 
     queryText += `updated_at = NOW() WHERE id = $${paramCount}`;
     queryParams.push(id);
@@ -188,6 +197,7 @@ export async function PUT(
       email: updatedUser.email,
       role: updatedUser.role,
       department: updatedUser.department,
+      companyId: updatedUser.company_id,
       manager: updatedUser.manager,
       avatar: updatedUser.avatar,
       hasFullAccess: updatedUser.has_full_access,
@@ -226,6 +236,7 @@ export async function DELETE(
     const { id } = await params;
     client = await pool.connect();
     await ensureAdminUser(client);
+    await ensureCompanySchema(client);
 
     const protectedUser = await client.query(
       "SELECT email FROM users WHERE id = $1",

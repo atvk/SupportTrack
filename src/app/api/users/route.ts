@@ -8,6 +8,7 @@ import {
   readSession,
   validatePasswordPolicy,
 } from "../../lib/auth";
+import { ensureCompanySchema } from "../../lib/companySchema";
 
 // Создаем пул соединений
 const pool = new Pool({
@@ -25,12 +26,25 @@ export async function GET(request: NextRequest) {
 
     try {
       await ensureAdminUser(client);
-      const result = await client.query(`
-        SELECT id, first_name, last_name, email, role, department, 
+      await ensureCompanySchema(client);
+      const companyId = request.nextUrl.searchParams.get("companyId");
+      const query = companyId
+        ? `
+        SELECT id, first_name, last_name, email, role, department, company_id,
+               manager, avatar, has_full_access, created_at, updated_at
+        FROM users 
+        WHERE company_id = $1
+        ORDER BY created_at DESC
+      `
+        : `
+        SELECT id, first_name, last_name, email, role, department, company_id,
                manager, avatar, has_full_access, created_at, updated_at
         FROM users 
         ORDER BY created_at DESC
-      `);
+      `;
+      const result = await client.query(`
+        ${query}
+      `, companyId ? [companyId] : []);
 
     
       const users = result.rows.map((row) => ({
@@ -40,6 +54,7 @@ export async function GET(request: NextRequest) {
         email: row.email,
         role: row.role,
         department: row.department,
+        companyId: row.company_id,
         manager: row.manager,
         avatar: row.avatar,
         hasFullAccess: row.has_full_access,
@@ -84,6 +99,7 @@ export async function POST(request: NextRequest) {
       manager,
       avatar,
       hasFullAccess,
+      companyId,
     } = body;
 
     // Валидация
@@ -113,6 +129,7 @@ export async function POST(request: NextRequest) {
     
     client = await pool.connect();
     await ensureAdminUser(client);
+    await ensureCompanySchema(client);
 
     // Проверка на существующего пользователя
     const existing = await client.query(
@@ -134,8 +151,8 @@ export async function POST(request: NextRequest) {
     const insertQuery = `
       INSERT INTO users (
         id, first_name, last_name, email, password, role, 
-        department, manager, avatar, has_full_access, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        department, manager, avatar, has_full_access, company_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
       RETURNING *
     `;
 
@@ -150,6 +167,7 @@ export async function POST(request: NextRequest) {
       manager || null,
       avatar || null,
       hasFullAccess || false,
+      companyId || null,
     ];
 
     console.log("📝 Выполняем INSERT...");
@@ -166,6 +184,7 @@ export async function POST(request: NextRequest) {
         email: newUser.email,
         role: newUser.role,
         department: newUser.department,
+        companyId: newUser.company_id,
         manager: newUser.manager,
         avatar: newUser.avatar,
         hasFullAccess: newUser.has_full_access,

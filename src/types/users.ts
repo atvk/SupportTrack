@@ -7,6 +7,7 @@ export interface UserData {
   password?: string;
   role?: string;
   department?: string;
+  companyId?: number | null;
   manager?: string;
   avatar?: string;
   hasFullAccess?: boolean;
@@ -21,6 +22,7 @@ export interface UserInput {
   password?: string;
   role?: string;
   department?: string;
+  companyId?: number | null;
   manager?: string;
   avatar?: string;
   hasFullAccess?: boolean;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getPoolConfig } from '../../lib/postgres';
+import { ensureAdminUser, isAdminEmail, verifyPassword, hashPassword } from '../../lib/auth';
 
 // Создаем пул соединений с базой данных
 const pool = new Pool({
@@ -22,8 +23,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Подключаемся к базе данных на Vercel
     client = await pool.connect();
+    await ensureAdminUser(client);
     
     // Ищем пользователя в БД (не в файле!)
     const result = await client.query(
@@ -44,8 +45,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверка пароля (сравниваем с тем, что в БД)
-    if (user.password !== password) {
+    const storedPassword = user.password as string | null;
+    if (!storedPassword) {
+      return NextResponse.json(
+        { message: 'Неверный email или пароль' },
+        { status: 401 }
+      );
+    }
+
+    let passwordValid = false;
+    if (storedPassword.startsWith("$2")) {
+      passwordValid = await verifyPassword(password, storedPassword);
+    } else {
+      // Legacy fallback: upgrade plain-text password to hash on successful login.
+      passwordValid = storedPassword === password;
+      if (passwordValid) {
+        const upgradedHash = await hashPassword(password);
+        await client.query("UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2", [
+          upgradedHash,
+          user.id,
+        ]);
+      }
+    }
+
+    if (!passwordValid) {
       console.log(`❌ Неверный пароль для: ${email}`);
       return NextResponse.json(
         { message: 'Неверный email или пароль' },
@@ -65,7 +88,7 @@ export async function POST(request: NextRequest) {
       department: user.department,
       manager: user.manager,
       avatar: user.avatar,
-      hasFullAccess: user.has_full_access,
+      hasFullAccess: Boolean(user.has_full_access) || isAdminEmail(user.email),
     };
     
     // Создаём ответ с пользователем

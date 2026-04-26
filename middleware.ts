@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const ADMIN_EMAIL = "steblovskiyanton@gmail.com";
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
@@ -27,8 +29,10 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
+    const isAdmin = String(session.email || "").toLowerCase() === ADMIN_EMAIL;
+
     // Проверка доступа к админке
-    if (pathname.startsWith('/admin') && session.role !== 'Admin') {
+    if (pathname.startsWith('/admin') && !isAdmin) {
       const url = new URL(`/users/${session.id}`, request.url);
       return NextResponse.redirect(url);
     }
@@ -36,7 +40,7 @@ export function middleware(request: NextRequest) {
     // Проверка доступа к чужому профилю
     if (pathname.startsWith('/users/')) {
       const userIdFromPath = pathname.split('/').pop();
-      if (userIdFromPath && String(session.id) !== String(userIdFromPath)) {
+      if (userIdFromPath && !isAdmin && String(session.id) !== String(userIdFromPath)) {
         const url = new URL(`/users/${session.id}`, request.url);
         return NextResponse.redirect(url);
       }

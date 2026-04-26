@@ -1,17 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getPoolConfig } from "../../lib/postgres";
+import {
+  ensureAdminUser,
+  hashPassword,
+  isAdminSession,
+  readSession,
+  validatePasswordPolicy,
+} from "../../lib/auth";
 
 // Создаем пул соединений
 const pool = new Pool({
   ...getPoolConfig(),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = readSession(request);
+    if (!isAdminSession(session)) {
+      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+    }
+
     const client = await pool.connect();
 
     try {
+      await ensureAdminUser(client);
       const result = await client.query(`
         SELECT id, first_name, last_name, email, role, department, 
                manager, avatar, has_full_access, created_at, updated_at
@@ -48,10 +61,15 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let client;
 
   try {
+    const session = readSession(request);
+    if (!isAdminSession(session)) {
+      return NextResponse.json({ error: "Только администратор может добавлять пользователей" }, { status: 403 });
+    }
+
     
     const body = await request.json();
     
@@ -82,9 +100,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email обязателен" }, { status: 400 });
     }
 
+    if (!password) {
+      return NextResponse.json({ error: "Пароль обязателен" }, { status: 400 });
+    }
+
+    const passwordValidation = validatePasswordPolicy(password);
+    if (!passwordValidation.valid) {
+      return NextResponse.json({ error: passwordValidation.message }, { status: 400 });
+    }
+
     const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     client = await pool.connect();
+    await ensureAdminUser(client);
 
     // Проверка на существующего пользователя
     const existing = await client.query(
@@ -100,6 +128,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const passwordHash = await hashPassword(password);
+
     // Вставка пользователя
     const insertQuery = `
       INSERT INTO users (
@@ -114,7 +144,7 @@ export async function POST(request: Request) {
       firstName,
       lastName,
       email,
-      password || null,
+      passwordHash,
       role || "Сотрудник",
       department || null,
       manager || null,

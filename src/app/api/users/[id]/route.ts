@@ -1,18 +1,90 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "pg";
 import { getPoolConfig } from "../../../lib/postgres";
+import {
+  ensureAdminUser,
+  hashPassword,
+  isAdminSession,
+  readSession,
+  validatePasswordPolicy,
+} from "../../../lib/auth";
 
 const pool = new Pool({
   ...getPoolConfig(),
 });
 
-export async function PUT(
-  request: Request,
+export async function GET(
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   let client;
 
   try {
+    const { id } = await params;
+    const session = readSession(request);
+    if (!session) {
+      return NextResponse.json({ error: "Не авторизован" }, { status: 401 });
+    }
+
+    const canRead = isAdminSession(session) || String(session.id) === String(id);
+    if (!canRead) {
+      return NextResponse.json({ error: "Доступ запрещен" }, { status: 403 });
+    }
+
+    client = await pool.connect();
+    await ensureAdminUser(client);
+
+    const result = await client.query(
+      `SELECT id, first_name, last_name, email, role, department,
+              manager, avatar, has_full_access, created_at, updated_at
+       FROM users
+       WHERE id = $1`,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    }
+
+    const user = result.rows[0];
+    return NextResponse.json({
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      manager: user.manager,
+      avatar: user.avatar,
+      hasFullAccess: user.has_full_access,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+    });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ error: "Ошибка загрузки пользователя: " + err.message }, { status: 500 });
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  let client;
+
+  try {
+    const session = readSession(request);
+    if (!isAdminSession(session)) {
+      return NextResponse.json(
+        { error: "Только администратор может изменять пользователей и роли" },
+        { status: 403 },
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -29,6 +101,7 @@ export async function PUT(
     } = body;
 
     client = await pool.connect();
+    await ensureAdminUser(client);
 
     // Проверяем существование
     const checkResult = await client.query(
@@ -61,8 +134,13 @@ export async function PUT(
       queryParams.push(email);
     }
     if (password !== undefined && password !== "") {
+      const passwordValidation = validatePasswordPolicy(password);
+      if (!passwordValidation.valid) {
+        return NextResponse.json({ error: passwordValidation.message }, { status: 400 });
+      }
+      const passwordHash = await hashPassword(password);
       queryText += `password = $${paramCount++}, `;
-      queryParams.push(password);
+      queryParams.push(passwordHash);
     }
     if (role !== undefined) {
       queryText += `role = $${paramCount++}, `;
@@ -123,6 +201,52 @@ export async function PUT(
       { error: "Ошибка обновления пользователя: " + err.message },
       { status: 500 },
     );
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  let client;
+
+  try {
+    const session = readSession(request);
+    if (!isAdminSession(session)) {
+      return NextResponse.json(
+        { error: "Только администратор может удалять пользователей" },
+        { status: 403 },
+      );
+    }
+
+    const { id } = await params;
+    client = await pool.connect();
+    await ensureAdminUser(client);
+
+    const protectedUser = await client.query(
+      "SELECT email FROM users WHERE id = $1",
+      [id],
+    );
+    if (protectedUser.rows.length === 0) {
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    }
+    if ((protectedUser.rows[0].email as string).toLowerCase() === "steblovskiyanton@gmail.com") {
+      return NextResponse.json({ error: "Нельзя удалить главного администратора" }, { status: 400 });
+    }
+
+    const result = await client.query("DELETE FROM users WHERE id = $1 RETURNING id", [id]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Пользователь удален" });
+  } catch (error) {
+    const err = error as Error;
+    return NextResponse.json({ error: "Ошибка удаления пользователя: " + err.message }, { status: 500 });
   } finally {
     if (client) {
       client.release();

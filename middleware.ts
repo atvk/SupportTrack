@@ -6,7 +6,7 @@ const ADMIN_EMAIL = "steblovskiyanton@gmail.com";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  const protectedRoutes = ['/users', '/admin'];
+  const protectedRoutes = ['/users', '/admin', '/specialist'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   
   if (!isProtectedRoute) {
@@ -30,11 +30,20 @@ export function middleware(request: NextRequest) {
     }
 
     const isAdmin = String(session.email || "").toLowerCase() === ADMIN_EMAIL;
+    const isSpecialist = session.role === "Специалист";
 
     // Проверка доступа к админке
     if (pathname.startsWith('/admin') && !isAdmin) {
       const url = new URL(`/users/${session.id}`, request.url);
       return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith('/specialist')) {
+      const specialistIdFromPath = pathname.split('/').pop();
+      if (!isSpecialist || (specialistIdFromPath && String(session.id) !== String(specialistIdFromPath))) {
+        const url = new URL(`/users/${session.id}`, request.url);
+        return NextResponse.redirect(url);
+      }
     }
 
     // Проверка доступа к чужому профилю
@@ -55,5 +64,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/users/:path*', '/admin/:path*'],
+  matcher: ['/users/:path*', '/admin/:path*', '/specialist/:path*'],
 };

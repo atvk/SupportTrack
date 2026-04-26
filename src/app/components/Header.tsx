@@ -114,6 +114,15 @@ export default function Header() {
     router.push(`/users/${userId}`);
   };
 
+  const redirectAfterLogin = (userData: UserData) => {
+    if (userData.role === "Специалист") {
+      router.push(`/specialist/${userData.id}`);
+      return;
+    }
+
+    redirectToUserPage(userData.id);
+  };
+
   const openSignInPopup = () => {
     setIsSignInPopupOpen(true);
     setError("");
@@ -153,7 +162,7 @@ export default function Header() {
         setUser(userData);
         localStorage.setItem("user", JSON.stringify(userData));
         closeSignInPopup();
-        redirectToUserPage(userData.id);
+        redirectAfterLogin(userData);
       } else {
         const errorMessage =
           data?.message ||

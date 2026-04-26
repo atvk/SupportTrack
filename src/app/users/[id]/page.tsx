@@ -21,6 +21,10 @@ export default function UserPage() {
     }
     try {
       const parsed = JSON.parse(stored);
+      if (parsed.role === "Специалист") {
+        router.replace(`/specialist/${parsed.id}`);
+        return;
+      }
       if (String(parsed.id) !== String(id)) {
         router.replace("/");
         return;

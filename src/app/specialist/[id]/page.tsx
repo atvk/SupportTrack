@@ -14,7 +14,9 @@ import { Pie } from "react-chartjs-2";
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface DepartmentStats {
+  id: number;
   department: string;
+  reviewUrl: string;
   usersCount: number;
   checkedByCurrentSpecialist: number;
 }
@@ -142,16 +144,21 @@ export default function SpecialistPage() {
           </h2>
           <div className="grid md:grid-cols-2 gap-3">
             {data.departments.map((item) => (
-              <Link
-                key={item.department}
-                href="#"
-                className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+              <div
+                key={item.id}
+                className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3"
               >
                 <div className="font-medium text-gray-800 dark:text-white">{item.department}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-300">
+                <div className="text-sm text-gray-500 dark:text-gray-300 mb-3">
                   Проверено этим специалистом (временно): {item.checkedByCurrentSpecialist}
                 </div>
-              </Link>
+                <Link
+                  href={item.reviewUrl || "#"}
+                  className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Перейти на проверку
+                </Link>
+              </div>
             ))}
           </div>
         </section>

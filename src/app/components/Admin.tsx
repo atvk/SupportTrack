@@ -32,6 +32,10 @@ export default function Admin({ user }: AdminProps) {
     isOpen: boolean;
     user: UserData | null;
   }>({ isOpen: false, user: null });
+  const [specialistDepartments, setSpecialistDepartments] = useState<
+    { id?: number; name: string; reviewUrl: string }[]
+  >([]);
+  const [savingDepartments, setSavingDepartments] = useState(false);
 
   const showError = (msg: string) =>
     setErrorPopup({ isOpen: true, message: msg });
@@ -61,9 +65,75 @@ export default function Admin({ user }: AdminProps) {
     }
   };
 
+  const loadSpecialistDepartments = async () => {
+    try {
+      const res = await fetch("/api/admin/specialist-departments", {
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        throw new Error("Ошибка загрузки отделов");
+      }
+      const data = await res.json();
+      setSpecialistDepartments(data);
+    } catch {
+      showError("Не удалось загрузить настройки страницы специалиста");
+    }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadSpecialistDepartments();
   }, []);
+
+  const updateSpecialistDepartment = (
+    index: number,
+    field: "name" | "reviewUrl",
+    value: string,
+  ) => {
+    setSpecialistDepartments((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    );
+  };
+
+  const addSpecialistDepartment = () => {
+    setSpecialistDepartments((prev) => [...prev, { name: "", reviewUrl: "#" }]);
+  };
+
+  const removeSpecialistDepartment = (index: number) => {
+    setSpecialistDepartments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const saveSpecialistDepartments = async () => {
+    setSavingDepartments(true);
+    try {
+      const payload = specialistDepartments
+        .map((item) => ({
+          name: item.name.trim(),
+          reviewUrl: item.reviewUrl.trim() || "#",
+        }))
+        .filter((item) => item.name.length > 0);
+
+      const res = await fetch("/api/admin/specialist-departments", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ departments: payload }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        showError(err.error || "Ошибка сохранения отделов");
+        return;
+      }
+
+      setMessage("✅ Настройки специалиста сохранены");
+      await loadSpecialistDepartments();
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      showError("Ошибка сети при сохранении отделов");
+    } finally {
+      setSavingDepartments(false);
+    }
+  };
 
   const handleAddUser = async (userData: UserInput) => {
     try {
@@ -282,6 +352,55 @@ export default function Admin({ user }: AdminProps) {
           <div className="text-center py-10 text-gray-500">Загрузка...</div>
         ) : (
           <>
+            <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  Настройка страницы специалиста
+                </h2>
+                <button
+                  onClick={addSpecialistDepartment}
+                  className="rounded-md bg-indigo-600 text-white px-3 py-2 text-sm hover:bg-indigo-700"
+                >
+                  Добавить отдел
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {specialistDepartments.map((item, index) => (
+                  <div key={`${item.id ?? "new"}-${index}`} className="grid md:grid-cols-12 gap-2">
+                    <input
+                      value={item.name}
+                      onChange={(e) => updateSpecialistDepartment(index, "name", e.target.value)}
+                      placeholder="Название отдела"
+                      className="md:col-span-6 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2"
+                    />
+                    <input
+                      value={item.reviewUrl}
+                      onChange={(e) => updateSpecialistDepartment(index, "reviewUrl", e.target.value)}
+                      placeholder="Ссылка на страницу проверки"
+                      className="md:col-span-5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2"
+                    />
+                    <button
+                      onClick={() => removeSpecialistDepartment(index)}
+                      className="md:col-span-1 rounded-md bg-red-500 text-white px-2 py-2 hover:bg-red-600"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <button
+                  onClick={saveSpecialistDepartments}
+                  disabled={savingDepartments}
+                  className="rounded-md bg-emerald-600 text-white px-4 py-2 hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {savingDepartments ? "Сохранение..." : "Сохранить отделы для специалиста"}
+                </button>
+              </div>
+            </div>
+
             <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                 Распределение сотрудников по отделам

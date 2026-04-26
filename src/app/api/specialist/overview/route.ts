@@ -16,6 +16,15 @@ function randomChecksByDepartment(seed: string, department: string) {
   return (hash % 25) + 1;
 }
 
+function randomUsersCount(seed: string, department: string) {
+  const base = `users:${seed}:${department}`;
+  let hash = 7;
+  for (let i = 0; i < base.length; i += 1) {
+    hash = (hash * 33 + base.charCodeAt(i)) % 8191;
+  }
+  return (hash % 40) + 5;
+}
+
 export async function GET(request: NextRequest) {
   let client;
 
@@ -48,35 +57,54 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Доступ только для специалистов" }, { status: 403 });
     }
 
-    const departmentResult = await client.query(
-      `SELECT department, COUNT(*)::int AS count
-       FROM users
-       GROUP BY department`,
-    );
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS specialist_departments (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        review_url TEXT NOT NULL DEFAULT '#',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
 
-    const departments = [
-      "Юридический отдел - Работа с застройщики",
-      "Юридический отдел - Общая практика",
-      "Юридический отдел - Исполнительное производство",
-      "Сопровождение отдел",
-      "Отдел обучения",
-      "Отдел продаж",
-      "Колл-центр",
-      "HR-отдел",
-      "IT-отдел",
-    ];
-
-    const countMap = new Map<string, number>();
-    for (const row of departmentResult.rows) {
-      const departmentName = row.department || "Без отдела";
-      countMap.set(departmentName, Number(row.count) || 0);
+    const defaultsCheck = await client.query("SELECT COUNT(*)::int AS count FROM specialist_departments");
+    if ((defaultsCheck.rows[0]?.count || 0) === 0) {
+      const defaults = [
+        "Юридический отдел - Работа с застройщики",
+        "Юридический отдел - Общая практика",
+        "Юридический отдел - Исполнительное производство",
+        "Сопровождение отдел",
+        "Отдел обучения",
+        "Отдел продаж",
+        "Колл-центр",
+        "HR-отдел",
+        "IT-отдел",
+      ];
+      for (let i = 0; i < defaults.length; i += 1) {
+        await client.query(
+          "INSERT INTO specialist_departments (name, review_url, sort_order) VALUES ($1, $2, $3)",
+          [defaults[i], "#", i + 1],
+        );
+      }
     }
 
-    const departmentStats = departments.map((department) => ({
-      department,
-      usersCount: countMap.get(department) || 0,
-      checkedByCurrentSpecialist: randomChecksByDepartment(currentUser.id, department),
-    }));
+    const departmentResult = await client.query(
+      `SELECT id, name, review_url
+       FROM specialist_departments
+       ORDER BY sort_order ASC, id ASC`,
+    );
+
+    const departmentStats = departmentResult.rows.map((row) => {
+      const department = row.name as string;
+      return {
+        id: row.id,
+        department,
+        reviewUrl: (row.review_url as string) || "#",
+        usersCount: randomUsersCount(currentUser.id, department),
+        checkedByCurrentSpecialist: randomChecksByDepartment(currentUser.id, department),
+      };
+    });
 
     return NextResponse.json({
       specialist: {

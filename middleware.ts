@@ -37,6 +37,13 @@ export function middleware(request: NextRequest) {
       const url = new URL(`/users/${session.id}`, request.url);
       return NextResponse.redirect(url);
     }
+    if (pathname.startsWith('/admin') && isAdmin) {
+      const adminIdFromPath = pathname.split('/').pop();
+      if (adminIdFromPath && String(session.id) !== String(adminIdFromPath)) {
+        const url = new URL(`/admin/${session.id}`, request.url);
+        return NextResponse.redirect(url);
+      }
+    }
 
     if (pathname.startsWith('/specialist')) {
       const specialistIdFromPath = pathname.split('/').pop();

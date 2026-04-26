@@ -115,6 +115,11 @@ export default function Header() {
   };
 
   const redirectAfterLogin = (userData: UserData) => {
+    if (userData.role === "Админ") {
+      router.push(`/admin/${userData.id}`);
+      return;
+    }
+
     if (userData.role === "Специалист") {
       router.push(`/specialist/${userData.id}`);
       return;
@@ -189,6 +194,14 @@ export default function Header() {
 
   const handleProfileClick = () => {
     if (user) {
+      if (user.role === "Админ") {
+        router.push(`/admin/${user.id}`);
+        return;
+      }
+      if (user.role === "Специалист") {
+        router.push(`/specialist/${user.id}`);
+        return;
+      }
       redirectToUserPage(user.id);
     }
   };

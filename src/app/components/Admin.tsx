@@ -1,7 +1,14 @@
 "use client";
 
 import { UserPlusIcon } from "@phosphor-icons/react";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
+import {
+  ArcElement,
+  Chart as ChartJS,
+  Legend,
+  Tooltip,
+} from "chart.js";
+import { Pie } from "react-chartjs-2";
 import UserTable from "@/src/app/components/UserTable";
 import AddEditUserPopup from "@/src/app/components/AddEditUserPopup";
 import ErrorPopup from "@/src/app/components/ErrorPopup";
@@ -11,6 +18,8 @@ import { UserData, UserInput } from "@/src/types/users";
 interface AdminProps {
   user: UserData;
 }
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function Admin({ user }: AdminProps) {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -204,6 +213,44 @@ export default function Admin({ user }: AdminProps) {
     return success;
   };
 
+  const usersByDepartment = useMemo(() => {
+    const map = new Map<string, number>();
+    users.forEach((userItem) => {
+      const department = userItem.department?.trim() || "Без отдела";
+      map.set(department, (map.get(department) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([department, count]) => ({
+      department,
+      count,
+    }));
+  }, [users]);
+
+  const chartData = useMemo(
+    () => ({
+      labels: usersByDepartment.map((item) => item.department),
+      datasets: [
+        {
+          label: "Сотрудники",
+          data: usersByDepartment.map((item) => item.count),
+          backgroundColor: [
+            "#4f46e5",
+            "#0ea5e9",
+            "#10b981",
+            "#f59e0b",
+            "#ef4444",
+            "#8b5cf6",
+            "#14b8a6",
+            "#f97316",
+            "#64748b",
+            "#22c55e",
+          ],
+          borderWidth: 1,
+        },
+      ],
+    }),
+    [usersByDepartment],
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       <div className="max-w-7xl mx-auto">
@@ -234,11 +281,26 @@ export default function Admin({ user }: AdminProps) {
         {loading ? (
           <div className="text-center py-10 text-gray-500">Загрузка...</div>
         ) : (
-          <UserTable
-            users={users}
-            onEdit={openEditPopup}
-            onDelete={openDeleteConfirm}
-          />
+          <>
+            <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                Распределение сотрудников по отделам
+              </h2>
+              {usersByDepartment.length > 0 ? (
+                <div className="max-w-xl">
+                  <Pie data={chartData} />
+                </div>
+              ) : (
+                <div className="text-gray-500">Нет данных для диаграммы</div>
+              )}
+            </div>
+
+            <UserTable
+              users={users}
+              onEdit={openEditPopup}
+              onDelete={openDeleteConfirm}
+            />
+          </>
         )}
 
         <AddEditUserPopup

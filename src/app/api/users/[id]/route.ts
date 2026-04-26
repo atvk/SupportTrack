@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
+import { getPoolConfig } from "@/app/lib/postgres";
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-  ssl: { rejectUnauthorized: false },
+  ...getPoolConfig(),
 });
 
 export async function PUT(

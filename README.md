@@ -32,3 +32,35 @@ SupportTrack/
 │   └── users.json
 ├── globals.d.ts
 └── package.json
+
+## Docker запуск
+
+1. (Опционально) скопируйте переменные окружения для Docker:
+
+```bash
+copy .env.docker.example .env
+```
+
+2. Запустите проект в контейнерах:
+
+```bash
+docker compose up --build
+```
+
+3. Откройте приложение: `http://localhost:3000`
+
+PostgreSQL будет доступен на `localhost:5432`.
+
+### Полезные команды
+
+Остановить контейнеры:
+
+```bash
+docker compose down
+```
+
+Остановить и удалить том базы данных:
+
+```bash
+docker compose down -v
+```

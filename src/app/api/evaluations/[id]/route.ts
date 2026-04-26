@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Pool } from 'pg';
-import { getPoolConfig } from '@/app/lib/postgres';
+import { getPoolConfig } from '../../../lib/postgres';
 
 const pool = new Pool({
   ...getPoolConfig(),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
-import { getPoolConfig } from '@/app/lib/postgres';
+import { getPoolConfig } from '../../lib/postgres';
 
 // Создаем пул соединений с базой данных
 const pool = new Pool({
